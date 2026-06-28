@@ -1,0 +1,393 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:studyverse/core/constants/app_colors.dart';
+import 'package:studyverse/core/constants/app_text_styles.dart';
+
+// ---------------------------------------------------------------------------
+// Providers
+// ---------------------------------------------------------------------------
+final _notificationsProvider = StateProvider<bool>((ref) => true);
+final _darkModeProvider = StateProvider<bool>((ref) => false);
+final _studyReminderProvider = StateProvider<bool>((ref) => true);
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifications = ref.watch(_notificationsProvider);
+    final darkMode = ref.watch(_darkModeProvider);
+    final studyReminder = ref.watch(_studyReminderProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        title: Text('설정', style: AppTextStyles.titleLarge),
+        centerTitle: true,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        children: [
+          _buildSection(
+            title: '알림',
+            delay: 0,
+            children: [
+              _buildToggleTile(
+                icon: Icons.notifications_outlined,
+                iconColor: AppColors.primary,
+                title: '알림 설정',
+                subtitle: '앱 알림 허용',
+                value: notifications,
+                onChanged: (v) => ref.read(_notificationsProvider.notifier).state = v,
+              ),
+              _buildToggleTile(
+                icon: Icons.alarm_rounded,
+                iconColor: AppColors.accent,
+                title: '공부 리마인더',
+                subtitle: '설정한 시간에 학습 알림',
+                value: studyReminder,
+                onChanged: (v) => ref.read(_studyReminderProvider.notifier).state = v,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildSection(
+            title: '화면',
+            delay: 60,
+            children: [
+              _buildToggleTile(
+                icon: Icons.dark_mode_outlined,
+                iconColor: const Color(0xFF3F51B5),
+                title: '다크 모드',
+                subtitle: '어두운 테마 사용',
+                value: darkMode,
+                onChanged: (v) => ref.read(_darkModeProvider.notifier).state = v,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildSection(
+            title: '학습',
+            delay: 120,
+            children: [
+              _buildNavTile(
+                context: context,
+                icon: Icons.flag_outlined,
+                iconColor: AppColors.success,
+                title: '학습 목표 설정',
+                subtitle: '일/주간 목표 시간 설정',
+              ),
+              _buildNavTile(
+                context: context,
+                icon: Icons.subject_rounded,
+                iconColor: AppColors.warning,
+                title: '과목 관리',
+                subtitle: '공부 과목 추가 및 삭제',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildSection(
+            title: '개인정보',
+            delay: 180,
+            children: [
+              _buildNavTile(
+                context: context,
+                icon: Icons.lock_outline_rounded,
+                iconColor: AppColors.textSecondary,
+                title: '개인정보 설정',
+                subtitle: '비밀번호 변경, 계정 보안',
+              ),
+              _buildNavTile(
+                context: context,
+                icon: Icons.policy_outlined,
+                iconColor: AppColors.textSecondary,
+                title: '개인정보 처리방침',
+              ),
+              _buildNavTile(
+                context: context,
+                icon: Icons.description_outlined,
+                iconColor: AppColors.textSecondary,
+                title: '이용약관',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildSection(
+            title: '고객지원',
+            delay: 240,
+            children: [
+              _buildNavTile(
+                context: context,
+                icon: Icons.help_outline_rounded,
+                iconColor: AppColors.primary,
+                title: '의문하기',
+                subtitle: '자주 묻는 질문 및 문의',
+              ),
+              _buildVersionTile(),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildDangerSection(context),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  // ── Section wrapper ──────────────────────────────────────────────────────
+  Widget _buildSection({
+    required String title,
+    required List<Widget> children,
+    int delay = 0,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(title,
+              style: AppTextStyles.labelLarge.copyWith(
+                  color: AppColors.textSecondary, fontWeight: FontWeight.w700)),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: AppColors.cardShadow,
+          ),
+          child: Column(
+            children: List.generate(children.length, (i) {
+              return Column(
+                children: [
+                  children[i],
+                  if (i < children.length - 1)
+                    const Divider(height: 1, color: AppColors.divider, indent: 66),
+                ],
+              );
+            }),
+          ),
+        ).animate().fadeIn(duration: 300.ms, delay: delay.ms),
+      ],
+    );
+  }
+
+  // ── Toggle tile ──────────────────────────────────────────────────────────
+  Widget _buildToggleTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                if (subtitle != null)
+                  Text(subtitle,
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Nav tile ─────────────────────────────────────────────────────────────
+  Widget _buildNavTile({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+  }) {
+    return InkWell(
+      onTap: () {},
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                  if (subtitle != null)
+                    Text(subtitle,
+                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Version tile ─────────────────────────────────────────────────────────
+  Widget _buildVersionTile() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.info_outline_rounded,
+                color: AppColors.textSecondary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text('버전 정보',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          ),
+          Text('v1.0.0',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+        ],
+      ),
+    );
+  }
+
+  // ── Danger section ───────────────────────────────────────────────────────
+  Widget _buildDangerSection(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => _showLogoutDialog(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
+                  const SizedBox(width: 12),
+                  Text('로그아웃',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.error, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.divider, indent: 52),
+          InkWell(
+            onTap: () => _showWithdrawDialog(context),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              child: Row(
+                children: [
+                  const Icon(Icons.delete_forever_outlined,
+                      color: AppColors.textSecondary, size: 20),
+                  const SizedBox(width: 12),
+                  Text('회원 탈퇴',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms, delay: 300.ms);
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('로그아웃'),
+        content: const Text('정말 로그아웃 하시겠어요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('취소',
+                style: AppTextStyles.labelLarge.copyWith(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('로그아웃',
+                style: AppTextStyles.labelLarge.copyWith(
+                    color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showWithdrawDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('회원 탈퇴'),
+        content: const Text('계정을 삭제하면 모든 학습 데이터가 영구적으로 삭제됩니다. 정말 탈퇴하시겠어요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('취소',
+                style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('탈퇴',
+                style: AppTextStyles.labelLarge.copyWith(
+                    color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}

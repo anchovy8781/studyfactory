@@ -1,0 +1,742 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:studyverse/core/constants/app_colors.dart';
+import 'package:studyverse/core/constants/app_sizes.dart';
+import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/shared/widgets/app_button.dart';
+import 'package:studyverse/shared/widgets/study_character.dart';
+import 'package:studyverse/features/home/domain/models/home_model.dart';
+import 'package:studyverse/features/home/presentation/providers/home_provider.dart';
+import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
+
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int _selectedNavIndex = 0;
+
+  static const _navItems = [
+    _NavItem(icon: Icons.home_rounded, label: '홈'),
+    _NavItem(icon: Icons.bar_chart_rounded, label: '통계'),
+    _NavItem(icon: Icons.menu_book_rounded, label: '공부'),
+    _NavItem(icon: Icons.people_rounded, label: '커뮤니티'),
+    _NavItem(icon: Icons.person_rounded, label: '마이'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final homeState = ref.watch(homeProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: homeState.when(
+        initial: () => const _LoadingView(),
+        loading: () => const _LoadingView(),
+        loaded: (data) => _HomeContent(
+          data: data,
+          onStartStudy: () => context.go('/study/start'),
+          onRefresh: () => ref.read(homeProvider.notifier).refresh(),
+        ),
+        error: (msg) => _ErrorView(message: msg, onRetry: () => ref.read(homeProvider.notifier).refresh()),
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          height: AppSizes.bottomNavHeight,
+          child: Row(
+            children: List.generate(_navItems.length, (i) {
+              final item = _navItems[i];
+              final isSelected = i == _selectedNavIndex;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() => _selectedNavIndex = i);
+                    if (i == 2) context.go('/study/start');
+                  },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSizes.spaceLg,
+                          vertical: AppSizes.spaceXs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primaryContainer : Colors.transparent,
+                          borderRadius: BorderRadius.circular(AppSizes.radiusRound),
+                        ),
+                        child: Icon(
+                          item.icon,
+                          size: AppSizes.bottomNavIconSize,
+                          color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.label,
+                        style: isSelected ? AppTextStyles.navLabelSelected : AppTextStyles.navLabel.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeContent extends ConsumerWidget {
+  const _HomeContent({
+    required this.data,
+    required this.onStartStudy,
+    required this.onRefresh,
+  });
+
+  final HomeData data;
+  final VoidCallback onStartStudy;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return RefreshIndicator(
+      onRefresh: () async => onRefresh(),
+      color: AppColors.primary,
+      child: CustomScrollView(
+        slivers: [
+          _buildAppBar(context, ref),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSizes.paddingPageHorizontal,
+              0,
+              AppSizes.paddingPageHorizontal,
+              AppSizes.space3xl,
+            ),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                const SizedBox(height: AppSizes.spaceLg),
+                _buildGreeting(),
+                const SizedBox(height: AppSizes.spaceLg),
+                _buildStudyTimeCard(),
+                const SizedBox(height: AppSizes.spaceLg),
+                _buildStreakAndPoints(),
+                const SizedBox(height: AppSizes.spaceLg),
+                _buildAiCard(context),
+                const SizedBox(height: AppSizes.spaceLg),
+                _buildQuickStats(),
+                const SizedBox(height: AppSizes.spaceLg),
+                _buildTodayTips(),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  SliverAppBar _buildAppBar(BuildContext context, WidgetRef ref) {
+    return SliverAppBar(
+      backgroundColor: AppColors.background,
+      elevation: 0,
+      floating: true,
+      pinned: false,
+      leading: Padding(
+        padding: const EdgeInsets.only(left: AppSizes.spaceLg),
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: 32,
+          height: 32,
+          errorBuilder: (_, __, ___) => Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Text(
+                'S',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      title: Text(
+        'StudyVerse',
+        style: AppTextStyles.titleLarge.copyWith(color: AppColors.primary),
+      ),
+      actions: [
+        // Points chip
+        Container(
+          margin: const EdgeInsets.only(right: AppSizes.spaceSm),
+          padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceMd, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.primaryContainer,
+            borderRadius: BorderRadius.circular(AppSizes.radiusRound),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.stars_rounded, color: AppColors.primary, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                '${_formatNumber(data.points)}P',
+                style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary),
+              ),
+            ],
+          ),
+        ),
+        // Profile
+        Padding(
+          padding: const EdgeInsets.only(right: AppSizes.spaceLg),
+          child: GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: AppSizes.avatarMd,
+              height: AppSizes.avatarMd,
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  data.userNickname.isNotEmpty ? data.userNickname[0] : '?',
+                  style: AppTextStyles.titleSmall.copyWith(color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGreeting() {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 6
+        ? '좋은 새벽이에요,'
+        : hour < 12
+            ? '좋은 아침이에요,'
+            : hour < 18
+                ? '안녕하세요,'
+                : '수고하셨어요,';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$greeting ${data.userNickname}님!',
+          style: AppTextStyles.headlineSmall,
+        ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.05, end: 0),
+        const SizedBox(height: AppSizes.spaceXs),
+        Text(
+          '오늘도 화이팅이에요! 🔥',
+          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.accent),
+        ).animate().fadeIn(duration: 500.ms, delay: 100.ms),
+      ],
+    );
+  }
+
+  Widget _buildStudyTimeCard() {
+    final hours = data.todayStudyHours.floor();
+    final minutes = ((data.todayStudyHours - hours) * 60).round();
+    final progress = (data.todayStudyHours / data.targetHours).clamp(0.0, 1.0);
+    final percent = (progress * 100).round();
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                ),
+                child: const Icon(Icons.timer_rounded, color: AppColors.primary, size: AppSizes.iconLg),
+              ),
+              const SizedBox(width: AppSizes.spaceMd),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('오늘 순공 시간', style: AppTextStyles.labelMedium),
+                  Text(
+                    '목표 ${data.targetHours.toStringAsFixed(0)}시간',
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceSm, vertical: 4),
+                decoration: BoxDecoration(
+                  color: percent >= 100 ? AppColors.successLight : AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusRound),
+                ),
+                child: Text(
+                  '$percent%',
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: percent >= 100 ? AppColors.success : AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.spaceLg),
+
+          // Large time display
+          ShaderMask(
+            shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
+            child: Text(
+              '${hours}시간 ${minutes}분',
+              style: AppTextStyles.displaySmall.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ).animate().fadeIn(duration: 600.ms, delay: 200.ms),
+          const SizedBox(height: AppSizes.spaceLg),
+
+          // Progress bar
+          Stack(
+            children: [
+              Container(
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusRound),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: progress,
+                child: Container(
+                  height: 10,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusRound),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.4),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+                  .animate()
+                  .custom(
+                    duration: 1200.ms,
+                    delay: 400.ms,
+                    curve: Curves.easeOut,
+                    builder: (_, value, child) => FractionallySizedBox(
+                      widthFactor: progress * value,
+                      child: child,
+                    ),
+                  ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.spaceSm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${hours}h ${minutes}m 완료',
+                style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+              ),
+              Text(
+                '목표까지 ${(data.targetHours - data.todayStudyHours).clamp(0, double.infinity).toStringAsFixed(1)}h 남음',
+                style: AppTextStyles.caption,
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms, delay: 150.ms).slideY(begin: 0.05, end: 0);
+  }
+
+  Widget _buildStreakAndPoints() {
+    return Row(
+      children: [
+        Expanded(
+          child: _Card(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: AppSizes.spaceXs),
+                    Text(
+                      '연속 학습',
+                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.accentDark),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSizes.spaceSm),
+                Text(
+                  '${data.streakDays}일',
+                  style: AppTextStyles.headlineSmall.copyWith(
+                    color: AppColors.accentDark,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  '최고 ${data.bestStreak}일',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.accentDark.withOpacity(0.7)),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSizes.spaceMd),
+        Expanded(
+          child: _Card(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.emoji_events_rounded, color: AppColors.success, size: 22),
+                    const SizedBox(width: AppSizes.spaceXs),
+                    Text(
+                      '포인트',
+                      style: AppTextStyles.labelSmall.copyWith(color: Color(0xFF2E7D32)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSizes.spaceSm),
+                Text(
+                  _formatNumber(data.points),
+                  style: AppTextStyles.headlineSmall.copyWith(
+                    color: Color(0xFF2E7D32),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'P 포인트',
+                  style: AppTextStyles.caption.copyWith(color: Color(0xFF2E7D32).withOpacity(0.7)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ).animate().fadeIn(duration: 600.ms, delay: 250.ms).slideY(begin: 0.05, end: 0);
+  }
+
+  Widget _buildAiCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        boxShadow: AppColors.primaryShadow,
+      ),
+      padding: const EdgeInsets.all(AppSizes.paddingCardLg),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceSm, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusRound),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.psychology_rounded, color: Colors.white, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        'AI 공부 인증',
+                        style: AppTextStyles.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSizes.spaceMd),
+                Text(
+                  data.isStudying ? 'AI 인증 모니터링 중...' : '지금 공부를\n시작해보세요!',
+                  style: AppTextStyles.titleLarge.copyWith(color: Colors.white, height: 1.3),
+                ),
+                const SizedBox(height: AppSizes.spaceSm),
+                Text(
+                  data.isStudying
+                      ? '실시간으로 공부 인증이 진행 중입니다'
+                      : '카메라로 AI가 공부를 인증합니다',
+                  style: AppTextStyles.bodySmall.copyWith(color: Colors.white.withOpacity(0.8)),
+                ),
+                const SizedBox(height: AppSizes.spaceLg),
+                GestureDetector(
+                  onTap: () => context.go('/study/start'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSizes.spaceLg,
+                      vertical: AppSizes.spaceMd,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          data.isStudying ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                          color: AppColors.primary,
+                          size: AppSizes.iconLg,
+                        ),
+                        const SizedBox(width: AppSizes.spaceSm),
+                        Text(
+                          data.isStudying ? '공부 현황 보기' : '공부 시작',
+                          style: AppTextStyles.buttonSmall.copyWith(color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSizes.spaceLg),
+          StudyCharacter(
+            size: AppSizes.characterMd,
+            mood: data.isStudying ? CharacterMood.studying : CharacterMood.happy,
+            animate: true,
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms, delay: 330.ms).slideY(begin: 0.05, end: 0);
+  }
+
+  Widget _buildQuickStats() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('오늘의 통계', style: AppTextStyles.titleMedium),
+        const SizedBox(height: AppSizes.spaceMd),
+        Row(
+          children: [
+            Expanded(
+              child: _StatChip(
+                icon: Icons.track_changes_rounded,
+                label: '집중도',
+                value: '${data.focusScore.toStringAsFixed(0)}%',
+                color: AppColors.primary,
+                backgroundColor: AppColors.primaryContainer,
+              ),
+            ),
+            const SizedBox(width: AppSizes.spaceSm),
+            Expanded(
+              child: _StatChip(
+                icon: Icons.library_books_rounded,
+                label: '최근 세션',
+                value: '${data.recentSessions}회',
+                color: AppColors.accent,
+                backgroundColor: AppColors.accentLight,
+              ),
+            ),
+            const SizedBox(width: AppSizes.spaceSm),
+            Expanded(
+              child: _StatChip(
+                icon: Icons.local_fire_department_rounded,
+                label: '연속 일수',
+                value: '${data.streakDays}일',
+                color: const Color(0xFFFF6B00),
+                backgroundColor: const Color(0xFFFFF3E0),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ).animate().fadeIn(duration: 600.ms, delay: 400.ms);
+  }
+
+  Widget _buildTodayTips() {
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('💡', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: AppSizes.spaceSm),
+              Text('오늘의 학습 팁', style: AppTextStyles.titleSmall),
+            ],
+          ),
+          const SizedBox(height: AppSizes.spaceMd),
+          Text(
+            '포모도로 기법을 활용해보세요!\n25분 집중 후 5분 휴식을 반복하면\n집중력이 크게 향상됩니다.',
+            style: AppTextStyles.bodyMedium,
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms, delay: 480.ms);
+  }
+
+  String _formatNumber(int n) {
+    if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}만';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return n.toString();
+  }
+}
+
+// ── Shared sub-widgets ─────────────────────────────────────────────────────
+
+class _Card extends StatelessWidget {
+  const _Card({required this.child, this.gradient, this.padding});
+
+  final Widget child;
+  final LinearGradient? gradient;
+  final EdgeInsets? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: padding ?? const EdgeInsets.all(AppSizes.paddingCardLg),
+      decoration: BoxDecoration(
+        color: gradient == null ? AppColors.surface : null,
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: child,
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.backgroundColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSizes.spaceMd,
+        horizontal: AppSizes.spaceMd,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: AppSizes.iconLg),
+          const SizedBox(height: AppSizes.spaceXs),
+          Text(
+            value,
+            style: AppTextStyles.titleSmall.copyWith(color: color, fontWeight: FontWeight.w800),
+          ),
+          Text(label, style: AppTextStyles.caption),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingView extends StatelessWidget {
+  const _LoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(color: AppColors.primary),
+          const SizedBox(height: AppSizes.spaceLg),
+          Text('데이터 불러오는 중...', style: AppTextStyles.bodyMedium),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.paddingPageHorizontal),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 56),
+            const SizedBox(height: AppSizes.spaceLg),
+            Text(message, style: AppTextStyles.bodyMedium, textAlign: TextAlign.center),
+            const SizedBox(height: AppSizes.spaceXl),
+            AppButton(label: '다시 시도', onPressed: onRetry, isFullWidth: false),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem {
+  const _NavItem({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+}

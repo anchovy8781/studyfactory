@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StudyVerse</string>
+    <string name="notification_channel_study" translatable="false">study_timer</string>
+    <string name="notification_channel_study_name">공부 타이머</string>
+    <string name="notification_channel_study_desc">공부 세션 진행 중 알림</string>
+    <string name="notification_channel_default" translatable="false">studyverse_default</string>
+    <string name="notification_channel_default_name">StudyVerse 알림</string>
+    <string name="notification_channel_default_desc">StudyVerse 앱 알림</string>
+    <string name="notification_channel_reward" translatable="false">rewards</string>
+    <string name="notification_channel_reward_name">리워드 알림</string>
+    <string name="notification_channel_reward_desc">포인트 적립 및 배지 획득 알림</string>
+    <string name="biometric_prompt_title">생체 인증</string>
+    <string name="biometric_prompt_subtitle">StudyVerse에 로그인합니다</string>
+    <string name="biometric_prompt_description">등록된 생체 정보를 사용하여 인증해주세요</string>
+    <string name="biometric_prompt_cancel">취소</string>
+</resources>
