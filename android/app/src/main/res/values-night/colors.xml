@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode splash background: matches AppColors.backgroundDark -->
+    <color name="launch_background">#0D1117</color>
+    <color name="notification_color">#64B5F6</color>
+</resources>
