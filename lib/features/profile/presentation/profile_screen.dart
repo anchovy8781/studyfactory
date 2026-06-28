@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
+import 'package:studyverse/features/home/presentation/providers/home_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Menu item model
@@ -76,6 +78,10 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final homeData = ref.watch(homeDataProvider);
+    final nickname = user?.nickname ?? homeData?.userNickname ?? '사용자';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -93,8 +99,8 @@ class ProfileScreen extends ConsumerWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildProfileHeader(),
-            _buildStatsRow(),
+            _buildProfileHeader(nickname),
+            _buildStatsRow(homeData),
             const SizedBox(height: 12),
             _buildMenuList(context),
             const SizedBox(height: 24),
@@ -105,7 +111,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ── Profile header ───────────────────────────────────────────────────────
-  Widget _buildProfileHeader() {
+  Widget _buildProfileHeader(String nickname) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
@@ -138,7 +144,7 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ).animate().scale(duration: 400.ms, curve: Curves.elasticOut),
           const SizedBox(height: 14),
-          Text('김스터디',
+          Text(nickname,
               style: AppTextStyles.headlineSmall.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Container(
@@ -159,7 +165,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ── Stats row ────────────────────────────────────────────────────────────
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(homeData) {
     return Container(
       color: AppColors.surface,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -171,11 +177,11 @@ class ProfileScreen extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            _buildStatItem('순공 시간', '412시간'),
+            _buildStatItem('순공 시간', homeData != null ? '${(homeData.todayStudyHours).toStringAsFixed(0)}h' : '-'),
             _buildStatDivider(),
-            _buildStatItem('연속 학습', '21일'),
+            _buildStatItem('연속 학습', homeData != null ? '${homeData.streakDays}일' : '-'),
             _buildStatDivider(),
-            _buildStatItem('획득 뱃지', '18개'),
+            _buildStatItem('오늘 점수', homeData != null ? '${homeData.focusScore.toInt()}점' : '-'),
           ],
         ),
       ),

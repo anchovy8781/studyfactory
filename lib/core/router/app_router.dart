@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:studyverse/core/router/route_names.dart';
 import 'package:studyverse/shared/widgets/app_bottom_nav.dart';
+import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
+import 'package:studyverse/features/auth/domain/models/auth_model.dart';
 
 // Real screen imports
 import 'package:studyverse/features/splash/presentation/splash_screen.dart';
@@ -82,7 +84,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: RoutePaths.splash,
     debugLogDiagnostics: false,
-    redirect: _globalRedirect,
+    redirect: (context, state) => _globalRedirect(context, state, ref),
     errorBuilder: (context, state) => Scaffold(
       body: Center(
         child: Column(
@@ -290,9 +292,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 // Global redirect
 // ---------------------------------------------------------------------------
 
-String? _globalRedirect(BuildContext context, GoRouterState state) {
-  // Auth guard can be wired here later.
-  return null;
+String? _globalRedirect(BuildContext context, GoRouterState state, ProviderRef ref) {
+  final authState = ref.read(authProvider);
+  final location = state.matchedLocation;
+
+  // Public routes that don't require auth
+  const publicRoutes = [RoutePaths.splash, RoutePaths.login, RoutePaths.register];
+  final isPublic = publicRoutes.any((r) => location == r);
+
+  return authState.when(
+    initial: () => null,
+    loading: () => null,
+    authenticated: (_) => isPublic && location != RoutePaths.splash ? RoutePaths.home : null,
+    unauthenticated: () => isPublic ? null : RoutePaths.login,
+    error: (_) => isPublic ? null : RoutePaths.login,
+  );
 }
 
 // ---------------------------------------------------------------------------

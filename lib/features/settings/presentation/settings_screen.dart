@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Providers
@@ -134,7 +136,7 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _buildDangerSection(context),
+          _buildDangerSection(context, ref),
           const SizedBox(height: 32),
         ],
       ),
@@ -295,7 +297,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   // ── Danger section ───────────────────────────────────────────────────────
-  Widget _buildDangerSection(BuildContext context) {
+  Widget _buildDangerSection(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -305,7 +307,7 @@ class SettingsScreen extends ConsumerWidget {
       child: Column(
         children: [
           InkWell(
-            onTap: () => _showLogoutDialog(context),
+            onTap: () => _showLogoutDialog(context, ref),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -343,7 +345,7 @@ class SettingsScreen extends ConsumerWidget {
     ).animate().fadeIn(duration: 300.ms, delay: 300.ms);
   }
 
-  void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -357,7 +359,11 @@ class SettingsScreen extends ConsumerWidget {
                 style: AppTextStyles.labelLarge.copyWith(color: AppColors.textSecondary)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () async {
+              Navigator.pop(context);
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/login');
+            },
             child: Text('로그아웃',
                 style: AppTextStyles.labelLarge.copyWith(
                     color: AppColors.error, fontWeight: FontWeight.w700)),
