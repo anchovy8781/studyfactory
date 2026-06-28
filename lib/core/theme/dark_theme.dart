@@ -142,7 +142,7 @@ final class DarkTheme {
           elevation: 0,
         ),
 
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: AppColors.surfaceDark,
           elevation: AppSizes.cardElevation,
           shape: RoundedRectangleBorder(

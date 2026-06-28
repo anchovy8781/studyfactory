@@ -128,7 +128,7 @@ final class AppTheme {
         ),
 
         // Card
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: AppColors.surface,
           elevation: AppSizes.cardElevation,
           shape: RoundedRectangleBorder(
@@ -276,7 +276,7 @@ final class AppTheme {
         ),
 
         // Dialog
-        dialogTheme: DialogThemeData(
+        dialogTheme: DialogTheme(
           backgroundColor: AppColors.surface,
           elevation: 8,
           shape: RoundedRectangleBorder(
@@ -389,7 +389,7 @@ final class AppTheme {
         ),
 
         // Tab bar
-        tabBarTheme: TabBarThemeData(
+        tabBarTheme: TabBarTheme(
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textSecondary,
           labelStyle: AppTextStyles.titleSmall,

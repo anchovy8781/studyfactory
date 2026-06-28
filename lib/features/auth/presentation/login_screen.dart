@@ -99,32 +99,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       child: Column(
         children: [
-          StudyCharacter(
-            size: AppSizes.characterMd,
-            mood: CharacterMood.happy,
-          )
-              .animate()
-              .fadeIn(duration: 600.ms)
-              .slideY(begin: -0.2, end: 0, curve: Curves.easeOut),
+          Animate(
+            effects: const [
+              FadeEffect(duration: Duration(milliseconds: 600)),
+              SlideEffect(
+                begin: Offset(0, -0.2),
+                end: Offset.zero,
+                curve: Curves.easeOut,
+              ),
+            ],
+            child: StudyCharacter(
+              size: AppSizes.characterMd,
+              mood: CharacterMood.happy,
+            ),
+          ),
           const SizedBox(height: AppSizes.spaceLg),
-          Text(
-            'StudyVerse',
-            style: AppTextStyles.headlineMedium.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
+          Animate(
+            effects: const [
+              FadeEffect(
+                duration: Duration(milliseconds: 600),
+                delay: Duration(milliseconds: 150),
+              ),
+            ],
+            child: Text(
+              'StudyVerse',
+              style: AppTextStyles.headlineMedium.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          )
-              .animate()
-              .fadeIn(duration: 600.ms, delay: 150.ms),
+          ),
           const SizedBox(height: AppSizes.spaceXs),
-          Text(
-            'AI 공부 인증 & 리워드 플랫폼',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: Colors.white.withOpacity(0.75),
+          Animate(
+            effects: const [
+              FadeEffect(
+                duration: Duration(milliseconds: 600),
+                delay: Duration(milliseconds: 250),
+              ),
+            ],
+            child: Text(
+              'AI 공부 인증 & 리워드 플랫폼',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: Colors.white.withOpacity(0.75),
+              ),
             ),
-          )
-              .animate()
-              .fadeIn(duration: 600.ms, delay: 250.ms),
+          ),
         ],
       ),
     );

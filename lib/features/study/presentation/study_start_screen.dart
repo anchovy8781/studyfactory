@@ -108,6 +108,10 @@ class _StudyStartScreenState extends ConsumerState<StudyStartScreen> {
   }
 
   Widget _buildCharacterSection() {
+    final character = StudyCharacter(
+      size: AppSizes.characterSm + 20,
+      mood: CharacterMood.cheering,
+    );
     return Container(
       padding: const EdgeInsets.all(AppSizes.paddingCardLg),
       decoration: BoxDecoration(
@@ -138,14 +142,17 @@ class _StudyStartScreenState extends ConsumerState<StudyStartScreen> {
               ],
             ),
           ),
-          StudyCharacter(
-            size: AppSizes.characterSm + 20,
-            mood: CharacterMood.cheering,
-          ).animate().fadeIn(duration: 500.ms).scale(
-                begin: const Offset(0.8, 0.8),
-                end: const Offset(1.0, 1.0),
+          Animate(
+            effects: const [
+              FadeEffect(duration: Duration(milliseconds: 500)),
+              ScaleEffect(
+                begin: Offset(0.8, 0.8),
+                end: Offset(1.0, 1.0),
                 curve: Curves.elasticOut,
               ),
+            ],
+            child: character,
+          ),
         ],
       ),
     ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.05, end: 0);

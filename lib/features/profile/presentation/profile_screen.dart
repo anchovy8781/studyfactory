@@ -54,7 +54,7 @@ final _menuItems = [
     route: '/network',
   ),
   _MenuItem(
-    icon: Icons.card_gift_card_rounded,
+    icon: Icons.card_giftcard_rounded,
     iconColor: AppColors.accent,
     title: '친구 초대하기',
     subtitle: '초대하면 포인트 지급!',

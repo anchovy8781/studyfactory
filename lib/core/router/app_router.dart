@@ -5,28 +5,83 @@ import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/router/route_names.dart';
 import 'package:studyverse/shared/widgets/app_bottom_nav.dart';
 
+// Real screen imports
+import 'package:studyverse/features/splash/presentation/splash_screen.dart';
+import 'package:studyverse/features/auth/presentation/login_screen.dart';
+import 'package:studyverse/features/auth/presentation/register_screen.dart';
+import 'package:studyverse/features/home/presentation/home_screen.dart';
+import 'package:studyverse/features/statistics/presentation/statistics_screen.dart';
+import 'package:studyverse/features/calendar/presentation/calendar_screen.dart';
+import 'package:studyverse/features/study/presentation/study_start_screen.dart';
+import 'package:studyverse/features/study/presentation/study_certification_screen.dart';
+import 'package:studyverse/features/study/presentation/study_timer_screen.dart';
+import 'package:studyverse/features/community/presentation/community_screen.dart';
+import 'package:studyverse/features/community/presentation/crew_screen.dart';
+import 'package:studyverse/features/community/presentation/mentor_screen.dart';
+import 'package:studyverse/features/profile/presentation/profile_screen.dart';
+import 'package:studyverse/features/profile/presentation/my_info_screen.dart';
+import 'package:studyverse/features/settings/presentation/settings_screen.dart';
+import 'package:studyverse/features/ai_coach/presentation/ai_coach_screen.dart';
+import 'package:studyverse/features/ranking/presentation/ranking_screen.dart';
+import 'package:studyverse/features/rewards/presentation/rewards_screen.dart';
+import 'package:studyverse/features/rewards/presentation/badges_screen.dart';
+import 'package:studyverse/features/admin/presentation/admin_dashboard_screen.dart';
+
 // ---------------------------------------------------------------------------
-// Placeholder page builder (replace each with real page implementations)
+// Slide transition helper
 // ---------------------------------------------------------------------------
 
-Widget _placeholder(String title) => Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Text(
-          title,
-          style: const TextStyle(fontSize: 18),
-        ),
+CustomTransitionPage<void> _slidePage(
+  GoRouterState state,
+  Widget child, {
+  Offset begin = const Offset(1, 0),
+}) {
+  return CustomTransitionPage(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 240),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+        SlideTransition(
+      position: Tween<Offset>(begin: begin, end: Offset.zero).animate(
+        CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
       ),
-    );
+      child: FadeTransition(
+        opacity: Tween<double>(begin: 0.5, end: 1).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        ),
+        child: child,
+      ),
+    ),
+  );
+}
+
+CustomTransitionPage<void> _modalPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage(
+    key: state.pageKey,
+    fullscreenDialog: true,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+        SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0, 1),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+      child: child,
+    ),
+  );
+}
 
 // ---------------------------------------------------------------------------
-// GoRouter configuration
+// GoRouter
 // ---------------------------------------------------------------------------
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: RoutePaths.splash,
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: false,
     redirect: _globalRedirect,
     errorBuilder: (context, state) => Scaffold(
       body: Center(
@@ -35,7 +90,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text('페이지를 찾을 수 없습니다\n${state.error}'),
+            const Text('페이지를 찾을 수 없습니다', style: TextStyle(fontSize: 16)),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => context.go(RoutePaths.home),
@@ -46,221 +101,120 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ),
     routes: [
-      // ── Splash / Onboarding ──────────────────────────────────────────────
+      // ── Splash ──────────────────────────────────────────────────────────
       GoRoute(
         path: RoutePaths.splash,
         name: RouteNames.splash,
-        builder: (context, state) => _placeholder('Splash'),
-      ),
-      GoRoute(
-        path: RoutePaths.onboarding,
-        name: RouteNames.onboarding,
-        builder: (context, state) => _placeholder('Onboarding'),
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: _placeholder('Onboarding'),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              FadeTransition(opacity: animation, child: child),
-        ),
+        builder: (context, state) => const SplashScreen(),
       ),
 
-      // ── Auth ──────────────────────────────────────────────────────────────
+      // ── Auth ────────────────────────────────────────────────────────────
       GoRoute(
         path: RoutePaths.login,
         name: RouteNames.login,
-        builder: (context, state) => _placeholder('로그인'),
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: _placeholder('로그인'),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOut),
-            ),
-            child: child,
-          ),
-        ),
+        pageBuilder: (context, state) => _slidePage(state, const LoginScreen()),
       ),
       GoRoute(
         path: RoutePaths.register,
         name: RouteNames.register,
-        builder: (context, state) => _placeholder('회원가입'),
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: _placeholder('회원가입'),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOut),
-            ),
-            child: child,
-          ),
-        ),
+        pageBuilder: (context, state) =>
+            _slidePage(state, const RegisterScreen()),
       ),
       GoRoute(
         path: RoutePaths.forgotPassword,
         name: RouteNames.forgotPassword,
-        builder: (context, state) => _placeholder('비밀번호 찾기'),
-      ),
-      GoRoute(
-        path: RoutePaths.resetPassword,
-        name: RouteNames.resetPassword,
-        builder: (context, state) => _placeholder('비밀번호 재설정'),
+        pageBuilder: (context, state) => _slidePage(
+          state,
+          const _PlaceholderScreen(title: '비밀번호 찾기'),
+        ),
       ),
 
-      // ── Main shell with bottom navigation ──────────────────────────────────
+      // ── Main shell (bottom nav) ─────────────────────────────────────────
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => AppShellScaffold(
-          navigationShell: navigationShell,
-        ),
+        builder: (context, state, navigationShell) =>
+            AppShellScaffold(navigationShell: navigationShell),
         branches: [
-          // Branch 0: Home
+          // 0 - Home
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: RoutePaths.home,
                 name: RouteNames.home,
-                builder: (context, state) => _placeholder('홈'),
+                builder: (context, state) => const HomeScreen(),
               ),
             ],
           ),
-          // Branch 1: Statistics
+          // 1 - Statistics
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: RoutePaths.statistics,
                 name: RouteNames.statistics,
-                builder: (context, state) => _placeholder('통계'),
+                builder: (context, state) => const StatisticsScreen(),
                 routes: [
                   GoRoute(
                     path: 'calendar',
                     name: RouteNames.calendar,
-                    builder: (context, state) => _placeholder('공부 캘린더'),
+                    pageBuilder: (context, state) =>
+                        _slidePage(state, const CalendarScreen()),
                   ),
                 ],
               ),
             ],
           ),
-          // Branch 2: Study (center FAB-style tab)
+          // 2 - Study (center tab)
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: RoutePaths.study,
                 name: RouteNames.study,
-                builder: (context, state) => _placeholder('공부'),
+                builder: (context, state) => const StudyStartScreen(),
               ),
             ],
           ),
-          // Branch 3: Community
+          // 3 - Community
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: RoutePaths.community,
                 name: RouteNames.community,
-                builder: (context, state) => _placeholder('커뮤니티'),
+                builder: (context, state) => const CommunityScreen(),
                 routes: [
-                  GoRoute(
-                    path: 'feed',
-                    name: RouteNames.communityFeed,
-                    builder: (context, state) => _placeholder('피드'),
-                  ),
-                  GoRoute(
-                    path: 'post/create',
-                    name: RouteNames.createPost,
-                    builder: (context, state) => _placeholder('게시물 작성'),
-                  ),
-                  GoRoute(
-                    path: 'post/:postId',
-                    name: RouteNames.communityPost,
-                    builder: (context, state) {
-                      final postId = state.pathParameters['postId']!;
-                      return _placeholder('게시물 $postId');
-                    },
-                  ),
                   GoRoute(
                     path: 'crew',
                     name: RouteNames.crew,
-                    builder: (context, state) => _placeholder('크루'),
-                    routes: [
-                      GoRoute(
-                        path: 'create',
-                        name: RouteNames.createCrew,
-                        builder: (context, state) => _placeholder('크루 만들기'),
-                      ),
-                      GoRoute(
-                        path: ':crewId',
-                        name: RouteNames.crewDetail,
-                        builder: (context, state) {
-                          final crewId = state.pathParameters['crewId']!;
-                          return _placeholder('크루 $crewId');
-                        },
-                      ),
-                    ],
+                    pageBuilder: (context, state) =>
+                        _slidePage(state, const CrewScreen()),
                   ),
                   GoRoute(
                     path: 'mentor',
                     name: RouteNames.mentor,
-                    builder: (context, state) => _placeholder('멘토'),
-                    routes: [
-                      GoRoute(
-                        path: ':mentorId',
-                        name: RouteNames.mentorDetail,
-                        builder: (context, state) {
-                          final mentorId = state.pathParameters['mentorId']!;
-                          return _placeholder('멘토 $mentorId');
-                        },
-                      ),
-                    ],
+                    pageBuilder: (context, state) =>
+                        _slidePage(state, const MentorScreen()),
                   ),
                 ],
               ),
             ],
           ),
-          // Branch 4: My Page
+          // 4 - My Page
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: RoutePaths.myPage,
                 name: RouteNames.myPage,
-                builder: (context, state) => _placeholder('마이'),
+                builder: (context, state) => const ProfileScreen(),
                 routes: [
                   GoRoute(
-                    path: 'profile',
+                    path: 'info',
                     name: RouteNames.profile,
-                    builder: (context, state) => _placeholder('프로필'),
-                    routes: [
-                      GoRoute(
-                        path: 'edit',
-                        name: RouteNames.editProfile,
-                        builder: (context, state) =>
-                            _placeholder('프로필 수정'),
-                      ),
-                    ],
+                    pageBuilder: (context, state) =>
+                        _slidePage(state, const MyInfoScreen()),
                   ),
                   GoRoute(
                     path: 'settings',
                     name: RouteNames.settings,
-                    builder: (context, state) => _placeholder('설정'),
-                    routes: [
-                      GoRoute(
-                        path: 'notifications',
-                        name: RouteNames.notificationSettings,
-                        builder: (context, state) =>
-                            _placeholder('알림 설정'),
-                      ),
-                      GoRoute(
-                        path: 'privacy',
-                        name: RouteNames.privacySettings,
-                        builder: (context, state) =>
-                            _placeholder('개인정보 설정'),
-                      ),
-                    ],
+                    pageBuilder: (context, state) =>
+                        _slidePage(state, const SettingsScreen()),
                   ),
                 ],
               ),
@@ -269,128 +223,84 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // ── Top-level non-shell routes ─────────────────────────────────────────
-
-      // Study flow (modal-style, not in bottom nav)
+      // ── Study flow (modal) ──────────────────────────────────────────────
       GoRoute(
         path: RoutePaths.studyStart,
         name: RouteNames.studyStart,
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          fullscreenDialog: true,
-          child: _placeholder('AI 공부 시작'),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          ),
-        ),
+        pageBuilder: (context, state) =>
+            _modalPage(state, const StudyStartScreen()),
       ),
       GoRoute(
         path: RoutePaths.studyCertification,
         name: RouteNames.studyCertification,
-        builder: (context, state) => _placeholder('공부 인증 중'),
+        pageBuilder: (context, state) =>
+            _modalPage(state, const StudyCertificationScreen()),
       ),
       GoRoute(
         path: RoutePaths.studyTimer,
         name: RouteNames.studyTimer,
-        builder: (context, state) => _placeholder('순공 타이머'),
-      ),
-      GoRoute(
-        path: RoutePaths.studyComplete,
-        name: RouteNames.studyComplete,
-        builder: (context, state) => _placeholder('공부 완료!'),
-      ),
-      GoRoute(
-        path: RoutePaths.subjectSelect,
-        name: RouteNames.subjectSelect,
-        builder: (context, state) => _placeholder('과목 선택'),
+        pageBuilder: (context, state) =>
+            _modalPage(state, const StudyTimerScreen()),
       ),
 
-      // AI Coach
+      // ── AI Coach ────────────────────────────────────────────────────────
       GoRoute(
         path: RoutePaths.aiCoach,
         name: RouteNames.aiCoach,
-        builder: (context, state) => _placeholder('AI 코치'),
+        pageBuilder: (context, state) =>
+            _slidePage(state, const AiCoachScreen()),
       ),
 
-      // Ranking
+      // ── Ranking ─────────────────────────────────────────────────────────
       GoRoute(
         path: RoutePaths.ranking,
         name: RouteNames.ranking,
-        builder: (context, state) => _placeholder('랭킹'),
+        pageBuilder: (context, state) =>
+            _slidePage(state, const RankingScreen()),
       ),
 
-      // Rewards
+      // ── Rewards ─────────────────────────────────────────────────────────
       GoRoute(
         path: RoutePaths.rewards,
         name: RouteNames.rewards,
-        builder: (context, state) => _placeholder('리워드'),
+        pageBuilder: (context, state) =>
+            _slidePage(state, const RewardsScreen()),
         routes: [
           GoRoute(
             path: 'badges',
             name: RouteNames.badges,
-            builder: (context, state) => _placeholder('배지'),
-          ),
-          GoRoute(
-            path: 'achievements',
-            name: RouteNames.achievements,
-            builder: (context, state) => _placeholder('업적'),
+            pageBuilder: (context, state) =>
+                _slidePage(state, const BadgesScreen()),
           ),
         ],
       ),
 
-      // Admin
+      // ── Admin ───────────────────────────────────────────────────────────
       GoRoute(
         path: RoutePaths.admin,
         name: RouteNames.admin,
-        builder: (context, state) => _placeholder('관리자'),
-        routes: [
-          GoRoute(
-            path: 'users',
-            name: RouteNames.adminUsers,
-            builder: (context, state) => _placeholder('사용자 관리'),
-          ),
-          GoRoute(
-            path: 'content',
-            name: RouteNames.adminContent,
-            builder: (context, state) => _placeholder('콘텐츠 관리'),
-          ),
-          GoRoute(
-            path: 'analytics',
-            name: RouteNames.adminAnalytics,
-            builder: (context, state) => _placeholder('분석'),
-          ),
-        ],
+        pageBuilder: (context, state) =>
+            _slidePage(state, const AdminDashboardScreen()),
       ),
     ],
   );
 });
 
 // ---------------------------------------------------------------------------
-// Global redirect (auth guard)
+// Global redirect
 // ---------------------------------------------------------------------------
 
 String? _globalRedirect(BuildContext context, GoRouterState state) {
-  // TODO: Inject auth state via Riverpod.
-  // For now, skip all redirects so the app can navigate freely during dev.
+  // Auth guard can be wired here later.
   return null;
 }
 
 // ---------------------------------------------------------------------------
-// Shell scaffold with bottom navigation
+// Shell scaffold
 // ---------------------------------------------------------------------------
 
 class AppShellScaffold extends StatelessWidget {
-  const AppShellScaffold({
-    super.key,
-    required this.navigationShell,
-  });
+  const AppShellScaffold({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
@@ -405,6 +315,23 @@ class AppShellScaffold extends StatelessWidget {
           initialLocation: index == navigationShell.currentIndex,
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Placeholder (only for truly unimplemented routes)
+// ---------------------------------------------------------------------------
+
+class _PlaceholderScreen extends StatelessWidget {
+  const _PlaceholderScreen({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text(title, style: const TextStyle(fontSize: 18))),
     );
   }
 }

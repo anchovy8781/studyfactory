@@ -177,14 +177,26 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Widget _buildCharacter() {
-    return StudyCharacter(
-      size: AppSizes.characterLg,
-      mood: CharacterMood.cheering,
-      animate: true,
-    )
-        .animate()
-        .fadeIn(duration: 700.ms, delay: 500.ms)
-        .slideY(begin: 0.3, end: 0, curve: Curves.easeOutBack);
+    return Animate(
+      effects: const [
+        FadeEffect(
+          duration: Duration(milliseconds: 700),
+          delay: Duration(milliseconds: 500),
+        ),
+        SlideEffect(
+          begin: Offset(0, 0.3),
+          end: Offset.zero,
+          curve: Curves.easeOutBack,
+          duration: Duration(milliseconds: 700),
+          delay: Duration(milliseconds: 500),
+        ),
+      ],
+      child: StudyCharacter(
+        size: AppSizes.characterLg,
+        mood: CharacterMood.cheering,
+        animate: true,
+      ),
+    );
   }
 
   Widget _buildAppName() {
