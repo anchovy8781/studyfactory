@@ -1,0 +1,44 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins-dependencies
+build/
+*.g.dart
+*.freezed.dart
+
+# Keep generated model files
+!lib/features/auth/domain/models/auth_model.freezed.dart
+!lib/features/auth/domain/models/auth_model.g.dart
+!lib/features/home/domain/models/home_model.freezed.dart
+!lib/features/home/domain/models/home_model.g.dart
+!lib/shared/models/study_session_model.freezed.dart
+!lib/shared/models/study_session_model.g.dart
+!lib/shared/models/user_model.freezed.dart
+!lib/shared/models/user_model.g.dart
+
+# Android build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# IntelliJ / Android Studio
+*.iml
+.idea/
+.gradle/
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+
+# macOS
+macos/Pods/
+
+# Environment
+.env
+.env.*
+*.keystore
+key.properties
+
+# OS
+.DS_Store
+Thumbs.db
