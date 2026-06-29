@@ -36,7 +36,7 @@ class StudySession with _$StudySession {
 }
 
 /// State envelope for the home screen data feed.
-@freezed
+@Freezed(toJson: false, fromJson: false)
 class HomeState with _$HomeState {
   const factory HomeState.initial() = _HomeInitial;
   const factory HomeState.loading() = _HomeLoading;

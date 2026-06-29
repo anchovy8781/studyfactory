@@ -46,6 +46,16 @@ dependencies:
   google_mlkit_face_detection: ^0.9.0
   image_picker: ^1.0.7
 
+  # Voice & Speech
+  speech_to_text: ^6.6.0
+  flutter_tts: ^4.0.2
+
+  # OCR
+  google_mlkit_text_recognition: ^0.13.1
+
+  # Local notifications (forgetting curve)
+  flutter_local_notifications: ^17.2.2
+
   # Permissions & Auth
   permission_handler: ^11.1.0
   local_auth: ^2.1.8
