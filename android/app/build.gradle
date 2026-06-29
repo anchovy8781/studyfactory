@@ -77,14 +77,13 @@ android {
             signingConfig keystorePropertiesFile.exists()
                 ? signingConfigs.release
                 : signingConfigs.debug
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles(
-                getDefaultProguardFile('proguard-android-optimize.txt'),
-                'proguard-rules.pro'
-            )
+            // R8/code shrinking DISABLED: minification strips classes that
+            // Flutter plugins access via reflection, which crashes the app at
+            // launch on real devices. Larger APK, but guaranteed to run.
+            minifyEnabled false
+            shrinkResources false
             firebaseCrashlytics {
-                mappingFileUploadEnabled true
+                mappingFileUploadEnabled false
             }
         }
 
@@ -101,14 +100,9 @@ android {
         }
     }
 
-    splits {
-        abi {
-            enable true
-            reset()
-            include 'x86_64', 'arm64-v8a', 'armeabi-v7a'
-            universalApk true
-        }
-    }
+    // ABI splits DISABLED: a single universal (fat) APK contains native libs
+    // for every architecture, so it can never crash from an ABI mismatch when
+    // sideloaded. `flutter build apk` then emits one clean app-release.apk.
 
     lint {
         disable 'InvalidPackage'

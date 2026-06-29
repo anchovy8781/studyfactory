@@ -93,14 +93,29 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Firebase Cloud Messaging -->
-        <service
-            android:name="com.google.firebase.messaging.FirebaseMessagingService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
+        <!-- ─────────────────────────────────────────────────────────────────
+             Firebase: disable NATIVE auto-initialisation.
+
+             With a placeholder google-services.json, the FirebaseInitProvider
+             ContentProvider runs at process startup (BEFORE any Dart code) and
+             can crash the app instantly — main.dart's try/catch cannot protect
+             against it. We remove the provider and disable auto data-collection
+             so Firebase only ever initialises from Dart, where it is guarded.
+             ───────────────────────────────────────────────────────────────── -->
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            tools:node="remove" />
+
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
 
         <!-- FCM default notification icon and color -->
         <meta-data
