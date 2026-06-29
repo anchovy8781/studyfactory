@@ -96,6 +96,16 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Patch plugin compileSdkVersion to 35
+        run: |
+          # Fixes "resource android:attr/lStar not found" in google_mlkit_commons.
+          # Some plugins ship with compileSdkVersion < 31 but reference Material-3
+          # attributes (lStar) via transitive AARs. Force API 35 for all plugins.
+          find "$HOME/.pub-cache/hosted" -name "build.gradle" -path "*/android/*" \
+            -exec grep -l "compileSdkVersion" {} \; \
+            | xargs sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 35/g' || true
+          echo "Plugin compileSdkVersion patched to 35"
+
       - name: Build runner (code generation)
         run: dart run build_runner build --delete-conflicting-outputs || true
 

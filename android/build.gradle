@@ -10,16 +10,6 @@ rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
     project.evaluationDependsOn(':app')
-
-    // Force all library sub-projects (plugins) to compile against API 35.
-    // Fixes "resource android:attr/lStar not found" that occurs when a plugin
-    // compiles with a lower compileSdkVersion but its transitive AARs reference
-    // Material-3 attributes (lStar) introduced in API 31.
-    afterEvaluate {
-        if (project.plugins.hasPlugin('com.android.library')) {
-            project.android.compileSdkVersion 35
-        }
-    }
 }
 
 tasks.register("clean", Delete) {
