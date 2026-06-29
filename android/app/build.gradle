@@ -24,7 +24,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace 'com.studyverse.app'
-    compileSdk 34
+    compileSdk 35
     ndkVersion "25.1.8937393"
 
     compileOptions {
@@ -45,7 +45,7 @@ android {
     defaultConfig {
         applicationId 'com.studyverse.app'
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
@@ -53,8 +53,9 @@ android {
         // Room / SQLite support for older API levels.
         vectorDrawables.useSupportLibrary = true
 
-        // Google ML Kit manifest placeholders.
+        // Manifest placeholders
         manifestPlaceholders = [
+            'applicationName': 'io.flutter.app.FlutterApplication',
             'mlKitFaceDetector': 'true',
         ]
     }
