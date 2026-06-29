@@ -1,199 +1,200 @@
 import 'dart:convert';
-import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:studyverse/features/auth/domain/models/auth_model.dart';
 
-const _accessTokenKey = 'access_token';
-const _refreshTokenKey = 'refresh_token';
-
+/// Local-first authentication.
+///
+/// StudyVerse has no remote backend yet, so accounts, sessions and password
+/// resets are all persisted on-device via [FlutterSecureStorage]. Everything
+/// works fully offline. When a real API becomes available, only this class
+/// needs to change — the provider/notifier/UI layers stay the same.
 class AuthRepository {
-  AuthRepository({
-    required Dio dio,
-    required FlutterSecureStorage secureStorage,
-  })  : _dio = dio,
-        _secureStorage = secureStorage;
+  AuthRepository({required FlutterSecureStorage secureStorage})
+      : _storage = secureStorage;
 
-  final Dio _dio;
-  final FlutterSecureStorage _secureStorage;
+  final FlutterSecureStorage _storage;
 
-  /// Attempt login with [email] and [password].
-  /// Stores access/refresh tokens on success and returns the [User].
-  Future<User> login(String email, String password) async {
-    try {
-      final response = await _dio.post(
-        '/auth/login',
-        data: {'email': email, 'password': password},
-      );
+  static const _accountsKey = 'sv_accounts_v1';
+  static const _sessionKey = 'sv_session_user_id';
 
-      final data = response.data as Map<String, dynamic>;
-      await _storeTokens(
-        accessToken: data['access_token'] as String,
-        refreshToken: data['refresh_token'] as String,
-      );
+  // ── Public API ──────────────────────────────────────────────────────────
 
-      return User.fromJson(data['user'] as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw _mapDioError(e);
-    }
-  }
-
-  /// Register a new account with the given credentials.
+  /// Register a new email account. Throws a Korean error message on failure.
   Future<User> register(String email, String password, String nickname) async {
-    try {
-      final response = await _dio.post(
-        '/auth/register',
-        data: {
-          'email': email,
-          'password': password,
-          'nickname': nickname,
-        },
-      );
+    final normalizedEmail = email.trim().toLowerCase();
+    final accounts = await _loadAccounts();
 
-      final data = response.data as Map<String, dynamic>;
-      await _storeTokens(
-        accessToken: data['access_token'] as String,
-        refreshToken: data['refresh_token'] as String,
-      );
+    if (accounts.any((a) => a['email'] == normalizedEmail)) {
+      throw '이미 사용 중인 이메일입니다.';
+    }
 
-      return User.fromJson(data['user'] as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw _mapDioError(e);
+    final record = <String, dynamic>{
+      'id': _newId(),
+      'email': normalizedEmail,
+      'nickname': nickname.trim(),
+      'passwordHash': _hash(password),
+      'provider': 'email',
+      'level': 1,
+      'totalStudyHours': 0.0,
+      'streakDays': 0,
+      'points': 0,
+    };
+
+    accounts.add(record);
+    await _saveAccounts(accounts);
+    await _storage.write(key: _sessionKey, value: record['id'] as String);
+    return _toUser(record);
+  }
+
+  /// Log in with [email] and [password].
+  Future<User> login(String email, String password) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final accounts = await _loadAccounts();
+
+    final record = accounts.firstWhereOrNull(
+      (a) => a['email'] == normalizedEmail,
+    );
+    if (record == null) {
+      throw '가입되지 않은 이메일입니다. 회원가입을 먼저 진행해 주세요.';
+    }
+    if (record['passwordHash'] != _hash(password)) {
+      throw '비밀번호가 올바르지 않습니다.';
+    }
+
+    await _storage.write(key: _sessionKey, value: record['id'] as String);
+    return _toUser(record);
+  }
+
+  /// Social login. Creates (or restores) a local account for [provider]
+  /// ('google' | 'kakao'). Real OAuth requires provider API keys + a backend;
+  /// until then this provides a fully working local social-account flow.
+  Future<User> socialLogin(String provider) async {
+    final label = provider == 'kakao' ? '카카오' : 'Google';
+    final pseudoEmail = '$provider@studyverse.local';
+    final accounts = await _loadAccounts();
+
+    var record = accounts.firstWhereOrNull((a) => a['email'] == pseudoEmail);
+    record ??= () {
+      final created = <String, dynamic>{
+        'id': _newId(),
+        'email': pseudoEmail,
+        'nickname': '$label 사용자',
+        'passwordHash': '',
+        'provider': provider,
+        'level': 1,
+        'totalStudyHours': 0.0,
+        'streakDays': 0,
+        'points': 0,
+      };
+      accounts.add(created);
+      return created;
+    }();
+
+    await _saveAccounts(accounts);
+    await _storage.write(key: _sessionKey, value: record['id'] as String);
+    return _toUser(record);
+  }
+
+  /// Verify an email exists so a reset can proceed. Throws if not found.
+  Future<void> requestPasswordReset(String email) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final accounts = await _loadAccounts();
+    final record = accounts.firstWhereOrNull(
+      (a) => a['email'] == normalizedEmail,
+    );
+    if (record == null) {
+      throw '가입되지 않은 이메일입니다.';
+    }
+    if (record['provider'] != 'email') {
+      throw '소셜 로그인 계정은 비밀번호를 재설정할 수 없습니다.';
     }
   }
 
-  /// Invalidate the session on the server and clear local tokens.
+  /// Set a new password for an existing email account.
+  Future<void> resetPassword(String email, String newPassword) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final accounts = await _loadAccounts();
+    final index =
+        accounts.indexWhere((a) => a['email'] == normalizedEmail);
+    if (index == -1) {
+      throw '가입되지 않은 이메일입니다.';
+    }
+    accounts[index]['passwordHash'] = _hash(newPassword);
+    await _saveAccounts(accounts);
+  }
+
+  /// Clear the active session (accounts are kept).
   Future<void> logout() async {
-    try {
-      final token = await _secureStorage.read(key: _accessTokenKey);
-      if (token != null) {
-        await _dio.post(
-          '/auth/logout',
-          options: Options(headers: {'Authorization': 'Bearer $token'}),
-        );
-      }
-    } catch (_) {
-      // Best-effort server logout; always clear local tokens.
-    } finally {
-      await _clearTokens();
-    }
+    await _storage.delete(key: _sessionKey);
   }
 
-  /// Returns the currently authenticated [User] using the stored token,
-  /// or `null` if no valid session exists.
+  /// Returns the logged-in [User], or null if no active session.
   Future<User?> getCurrentUser() async {
     try {
-      final token = await _secureStorage.read(key: _accessTokenKey);
-      if (token == null) return null;
-
-      final response = await _dio.get(
-        '/auth/me',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-      return User.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        final refreshed = await _tryRefreshToken();
-        if (refreshed) return getCurrentUser();
-        await _clearTokens();
-      }
-      return null;
+      final id = await _storage.read(key: _sessionKey);
+      if (id == null) return null;
+      final accounts = await _loadAccounts();
+      final record = accounts.firstWhereOrNull((a) => a['id'] == id);
+      return record == null ? null : _toUser(record);
     } catch (_) {
-      // PlatformException from Keystore or unexpected errors — treat as no session.
       return null;
     }
   }
 
-  // ── Private helpers ────────────────────────────────────────────────────────
+  // ── Private helpers ───────────────────────────────────────────────────────
 
-  Future<void> _storeTokens({
-    required String accessToken,
-    required String refreshToken,
-  }) async {
-    await Future.wait([
-      _secureStorage.write(key: _accessTokenKey, value: accessToken),
-      _secureStorage.write(key: _refreshTokenKey, value: refreshToken),
-    ]);
-  }
-
-  Future<void> _clearTokens() async {
-    await Future.wait([
-      _secureStorage.delete(key: _accessTokenKey),
-      _secureStorage.delete(key: _refreshTokenKey),
-    ]);
-  }
-
-  Future<bool> _tryRefreshToken() async {
-    final refreshToken = await _secureStorage.read(key: _refreshTokenKey);
-    if (refreshToken == null) return false;
-
+  Future<List<Map<String, dynamic>>> _loadAccounts() async {
     try {
-      final response = await _dio.post(
-        '/auth/refresh',
-        data: {'refresh_token': refreshToken},
-      );
-      final data = response.data as Map<String, dynamic>;
-      await _storeTokens(
-        accessToken: data['access_token'] as String,
-        refreshToken: data['refresh_token'] as String? ?? refreshToken,
-      );
-      return true;
+      final raw = await _storage.read(key: _accountsKey);
+      if (raw == null || raw.isEmpty) return [];
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
     } catch (_) {
-      return false;
+      return [];
     }
   }
 
-  String _mapDioError(DioException e) {
-    final statusCode = e.response?.statusCode;
-    final serverMessage = (e.response?.data as Map<String, dynamic>?)?['message'] as String?;
+  Future<void> _saveAccounts(List<Map<String, dynamic>> accounts) async {
+    await _storage.write(key: _accountsKey, value: jsonEncode(accounts));
+  }
 
-    if (serverMessage != null) return serverMessage;
+  User _toUser(Map<String, dynamic> r) => User(
+        id: r['id'] as String,
+        email: r['email'] as String,
+        nickname: r['nickname'] as String,
+        level: (r['level'] as num?)?.toInt() ?? 1,
+        totalStudyHours: (r['totalStudyHours'] as num?)?.toDouble() ?? 0.0,
+        streakDays: (r['streakDays'] as num?)?.toInt() ?? 0,
+        points: (r['points'] as num?)?.toInt() ?? 0,
+      );
 
-    switch (statusCode) {
-      case 400:
-        return '입력 정보를 확인해 주세요.';
-      case 401:
-        return '이메일 또는 비밀번호가 올바르지 않습니다.';
-      case 403:
-        return '접근이 거부되었습니다.';
-      case 404:
-        return '계정을 찾을 수 없습니다.';
-      case 409:
-        return '이미 사용 중인 이메일입니다.';
-      case 422:
-        return '입력 형식이 올바르지 않습니다.';
-      case 500:
-        return '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
-      default:
-        if (e.type == DioExceptionType.connectionError ||
-            e.type == DioExceptionType.connectionTimeout) {
-          return '네트워크 연결을 확인해 주세요.';
-        }
-        return '알 수 없는 오류가 발생했습니다.';
+  String _newId() =>
+      DateTime.now().microsecondsSinceEpoch.toRadixString(16);
+
+  /// Non-cryptographic FNV-1a hash. Local demo only — avoids storing the
+  /// raw password in clear text while keeping deterministic comparison.
+  String _hash(String input) {
+    if (input.isEmpty) return '';
+    var hash = 0x811c9dc5;
+    for (final unit in utf8.encode('sv_salt::$input')) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0xFFFFFFFF;
     }
+    return hash.toRadixString(16);
   }
 }
 
 // ── Riverpod providers ─────────────────────────────────────────────────────
 
-final _dioProvider = Provider<Dio>((ref) {
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: 'https://api.studyverse.app/v1',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {'Content-Type': 'application/json'},
-    ),
-  );
-  return dio;
-});
-
 final _secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   return const FlutterSecureStorage(
     aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
-      // If the Keystore is corrupt (e.g. after factory-reset or reinstall),
-      // clear stored values rather than crashing.
       resetOnError: true,
     ),
   );
@@ -201,7 +202,6 @@ final _secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
-    dio: ref.watch(_dioProvider),
     secureStorage: ref.watch(_secureStorageProvider),
   );
 });

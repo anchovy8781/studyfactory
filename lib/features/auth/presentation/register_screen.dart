@@ -457,6 +457,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           label: '이용약관에 동의합니다 (필수)',
           linkText: '이용약관 보기',
           onChanged: (v) => setState(() => _agreedTerms = v ?? false),
+          onTapLink: () => context.push('/terms'),
         ),
         const SizedBox(height: AppSizes.spaceSm),
         _buildCheckbox(
@@ -464,6 +465,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           label: '개인정보처리방침에 동의합니다 (필수)',
           linkText: '약관 보기',
           onChanged: (v) => setState(() => _agreedPrivacy = v ?? false),
+          onTapLink: () => context.push('/privacy'),
         ),
       ],
     );
@@ -474,6 +476,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     required String label,
     required String linkText,
     required ValueChanged<bool?> onChanged,
+    VoidCallback? onTapLink,
   }) {
     return Row(
       children: [
@@ -504,7 +507,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,
                   ),
-                  recognizer: TapGestureRecognizer()..onTap = () {},
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = onTapLink ?? () {},
                 ),
               ],
             ),

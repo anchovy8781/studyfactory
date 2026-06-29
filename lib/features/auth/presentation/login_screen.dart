@@ -204,7 +204,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () {},
+                onPressed: () => context.push('/forgot-password'),
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSizes.spaceSm,
@@ -407,9 +407,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: AppSizes.spaceMd),
         Row(
           children: [
-            Expanded(child: _buildSocialButton(label: 'Google', color: Colors.white, textColor: AppColors.textPrimary, icon: _googleIcon())),
+            Expanded(child: _buildSocialButton(label: 'Google', provider: 'google', color: Colors.white, textColor: AppColors.textPrimary, icon: _googleIcon())),
             const SizedBox(width: AppSizes.spaceMd),
-            Expanded(child: _buildSocialButton(label: 'Kakao', color: const Color(0xFFFEE500), textColor: const Color(0xFF191919), icon: _kakaoIcon())),
+            Expanded(child: _buildSocialButton(label: 'Kakao', provider: 'kakao', color: const Color(0xFFFEE500), textColor: const Color(0xFF191919), icon: _kakaoIcon())),
           ],
         ),
       ],
@@ -418,21 +418,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildSocialButton({
     required String label,
+    required String provider,
     required Color color,
     required Color textColor,
     required Widget icon,
   }) {
     return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$label 로그인은 준비 중입니다.'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusMd)),
-            margin: const EdgeInsets.all(AppSizes.spaceLg),
-          ),
-        );
-      },
+      onTap: () => ref.read(authProvider.notifier).socialLogin(provider),
       child: Container(
         height: AppSizes.buttonHeightMd,
         decoration: BoxDecoration(

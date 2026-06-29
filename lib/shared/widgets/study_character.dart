@@ -165,11 +165,12 @@ class _DogPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Draw order: tail → body → head → ears → face → chest badge
+    // Centred, sitting chibi pose. Draw order back-to-front.
     _drawTail(canvas, w, h);
     _drawBody(canvas, w, h);
-    _drawHead(canvas, w, h);
+    _drawPaws(canvas, w, h);
     _drawEars(canvas, w, h);
+    _drawHead(canvas, w, h);
     _drawFace(canvas, w, h);
     _drawChestBadge(canvas, w, h);
   }
@@ -179,34 +180,26 @@ class _DogPainter extends CustomPainter {
       ..color = _furOrange
       ..style = PaintingStyle.fill;
 
-    final cx = w * 0.78;
-    final cy = h * 0.62;
-    final angle = tailAngle * 0.5; // radians swing
+    // Tail curls up behind the body on the right, gently wagging.
+    final baseX = w * 0.70;
+    final baseY = h * 0.80;
+    final wag = tailAngle * 0.18;
+    final tipX = w * (0.86 + wag);
+    final tipY = h * 0.60;
 
-    final path = Path();
-    final tipX = cx + math.cos(angle) * w * 0.22;
-    final tipY = cy - math.sin(angle).abs() * h * 0.18;
-    path.moveTo(cx, cy);
-    path.quadraticBezierTo(
-      cx + w * 0.18,
-      cy - h * 0.05,
-      tipX,
-      tipY,
-    );
-    path.quadraticBezierTo(
-      tipX - w * 0.02,
-      tipY + h * 0.06,
-      cx + w * 0.02,
-      cy + h * 0.04,
-    );
-    path.close();
+    final path = Path()
+      ..moveTo(baseX, baseY)
+      ..quadraticBezierTo(w * 0.94, h * 0.78, tipX, tipY)
+      ..quadraticBezierTo(w * 0.82, h * 0.66, baseX - w * 0.02, baseY - h * 0.06)
+      ..close();
     canvas.drawPath(path, paint);
 
-    // Tail tip – lighter fluff
-    final tipPaint = Paint()
-      ..color = _furLight
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(tipX, tipY), w * 0.04, tipPaint);
+    // Lighter fluffy tip
+    canvas.drawCircle(
+      Offset(tipX, tipY),
+      w * 0.055,
+      Paint()..color = _furLight,
+    );
   }
 
   void _drawBody(Canvas canvas, double w, double h) {
@@ -214,238 +207,196 @@ class _DogPainter extends CustomPainter {
       ..color = _furOrange
       ..style = PaintingStyle.fill;
 
-    // Main body ellipse
-    final bodyRect = Rect.fromCenter(
-      center: Offset(w * 0.45, h * 0.68),
-      width: w * 0.56,
-      height: h * 0.38,
+    // Sitting body: a soft rounded triangle/teardrop, centred.
+    final bodyRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(w * 0.5, h * 0.74),
+        width: w * 0.52,
+        height: h * 0.44,
+      ),
+      Radius.circular(w * 0.26),
     );
-    canvas.drawOval(bodyRect, paint);
+    canvas.drawRRect(bodyRect, paint);
 
-    // Belly (lighter patch)
-    final bellyPaint = Paint()
-      ..color = _furLight
-      ..style = PaintingStyle.fill;
-    final bellyRect = Rect.fromCenter(
-      center: Offset(w * 0.43, h * 0.72),
-      width: w * 0.30,
-      height: h * 0.24,
+    // Lighter belly patch
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(w * 0.5, h * 0.78),
+          width: w * 0.30,
+          height: h * 0.30,
+        ),
+        Radius.circular(w * 0.15),
+      ),
+      Paint()..color = _furLight,
     );
-    canvas.drawOval(bellyRect, bellyPaint);
-
-    // Legs (four rounded rectangles)
-    _drawLeg(canvas, w * 0.28, h * 0.80, w, h);
-    _drawLeg(canvas, w * 0.42, h * 0.80, w, h);
-    _drawLeg(canvas, w * 0.54, h * 0.80, w, h);
-    _drawLeg(canvas, w * 0.63, h * 0.80, w, h);
   }
 
-  void _drawLeg(Canvas canvas, double x, double y, double w, double h) {
-    final paint = Paint()
-      ..color = _furOrange
-      ..style = PaintingStyle.fill;
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-        center: Offset(x, y + h * 0.05),
-        width: w * 0.10,
-        height: h * 0.14,
-      ),
-      const Radius.circular(6),
-    );
-    canvas.drawRRect(rrect, paint);
-
-    // Paw
-    final pawPaint = Paint()
-      ..color = _furDark
-      ..style = PaintingStyle.fill;
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(x, y + h * 0.13),
-        width: w * 0.11,
-        height: h * 0.05,
-      ),
-      pawPaint,
-    );
+  void _drawPaws(Canvas canvas, double w, double h) {
+    final paint = Paint()..color = _furLight;
+    // Two front paws resting at the bottom, symmetric.
+    for (final dx in [0.38, 0.62]) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(w * dx, h * 0.92),
+          width: w * 0.16,
+          height: h * 0.10,
+        ),
+        paint,
+      );
+      // toe lines
+      final toe = Paint()
+        ..color = _furDark.withOpacity(0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.008
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(
+        Offset(w * dx, h * 0.89),
+        Offset(w * dx, h * 0.94),
+        toe,
+      );
+    }
   }
 
   void _drawHead(Canvas canvas, double w, double h) {
-    final paint = Paint()
-      ..color = _furOrange
-      ..style = PaintingStyle.fill;
+    // Big chibi head, centred.
+    canvas.drawCircle(
+      Offset(w * 0.5, h * 0.38),
+      w * 0.30,
+      Paint()..color = _furOrange,
+    );
 
-    // Head circle
-    canvas.drawCircle(Offset(w * 0.44, h * 0.38), w * 0.28, paint);
-
-    // Muzzle
-    final muzzlePaint = Paint()
-      ..color = _furLight
-      ..style = PaintingStyle.fill;
+    // Lighter cheeks/muzzle area
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(w * 0.44, h * 0.46),
-        width: w * 0.24,
-        height: h * 0.14,
+        center: Offset(w * 0.5, h * 0.46),
+        width: w * 0.34,
+        height: h * 0.20,
       ),
-      muzzlePaint,
+      Paint()..color = _furLight,
     );
   }
 
   void _drawEars(Canvas canvas, double w, double h) {
-    final paint = Paint()
-      ..color = _furOrange
-      ..style = PaintingStyle.fill;
-    final innerPaint = Paint()
-      ..color = _furDark.withOpacity(0.5)
-      ..style = PaintingStyle.fill;
+    final paint = Paint()..color = _furOrange;
+    final innerPaint = Paint()..color = _furDark.withOpacity(0.45);
+
+    // Rounded triangular ears, symmetric about the centre.
+    void ear(double tipX, double tipY, double baseInX, double baseOutX,
+        double baseY, double inTipX, double inTipY) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(w * baseInX, h * baseY)
+          ..quadraticBezierTo(
+              w * tipX, h * (tipY - 0.02), w * tipX, h * tipY)
+          ..quadraticBezierTo(
+              w * tipX, h * (tipY + 0.02), w * baseOutX, h * (baseY + 0.02))
+          ..close(),
+        paint,
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(w * (baseInX + 0.01), h * (baseY + 0.005))
+          ..lineTo(w * inTipX, h * inTipY)
+          ..lineTo(w * (baseOutX - 0.015), h * (baseY + 0.01))
+          ..close(),
+        innerPaint,
+      );
+    }
 
     // Left ear
-    final leftEar = Path()
-      ..moveTo(w * 0.22, h * 0.24)
-      ..lineTo(w * 0.14, h * 0.10)
-      ..lineTo(w * 0.30, h * 0.18)
-      ..close();
-    canvas.drawPath(leftEar, paint);
-
-    // Left ear inner
-    final leftInner = Path()
-      ..moveTo(w * 0.22, h * 0.22)
-      ..lineTo(w * 0.17, h * 0.13)
-      ..lineTo(w * 0.28, h * 0.19)
-      ..close();
-    canvas.drawPath(leftInner, innerPaint);
-
-    // Right ear
-    final rightEar = Path()
-      ..moveTo(w * 0.62, h * 0.24)
-      ..lineTo(w * 0.72, h * 0.10)
-      ..lineTo(w * 0.56, h * 0.18)
-      ..close();
-    canvas.drawPath(rightEar, paint);
-
-    // Right ear inner
-    final rightInner = Path()
-      ..moveTo(w * 0.62, h * 0.22)
-      ..lineTo(w * 0.68, h * 0.13)
-      ..lineTo(w * 0.58, h * 0.19)
-      ..close();
-    canvas.drawPath(rightInner, innerPaint);
+    ear(0.20, 0.12, 0.30, 0.40, 0.24, 0.27, 0.17);
+    // Right ear (mirrored)
+    ear(0.80, 0.12, 0.70, 0.60, 0.24, 0.73, 0.17);
   }
 
   void _drawFace(Canvas canvas, double w, double h) {
-    // Eyes
     _drawEyes(canvas, w, h);
 
     // Nose
-    final nosePaint = Paint()
-      ..color = _noseDark
-      ..style = PaintingStyle.fill;
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(w * 0.44, h * 0.43),
-        width: w * 0.08,
-        height: h * 0.05,
+        center: Offset(w * 0.5, h * 0.44),
+        width: w * 0.09,
+        height: h * 0.055,
       ),
-      nosePaint,
+      Paint()..color = _noseDark,
+    );
+    // Nose highlight
+    canvas.drawCircle(
+      Offset(w * 0.48, h * 0.43),
+      w * 0.012,
+      Paint()..color = _white.withOpacity(0.6),
     );
 
-    // Nose highlight
-    final highlightPaint = Paint()
-      ..color = _white.withOpacity(0.6)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(w * 0.42, h * 0.42), w * 0.01, highlightPaint);
-
-    // Mouth
     _drawMouth(canvas, w, h);
 
-    // Cheek blushes
-    final blushPaint = Paint()
-      ..color = const Color(0xFFFF8A80).withOpacity(0.5)
-      ..style = PaintingStyle.fill;
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * 0.30, h * 0.46),
-        width: w * 0.08,
-        height: h * 0.04,
-      ),
-      blushPaint,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * 0.58, h * 0.46),
-        width: w * 0.08,
-        height: h * 0.04,
-      ),
-      blushPaint,
-    );
+    // Cheek blushes, symmetric
+    final blush = Paint()..color = const Color(0xFFFF8A80).withOpacity(0.45);
+    for (final dx in [0.32, 0.68]) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(w * dx, h * 0.47),
+          width: w * 0.09,
+          height: h * 0.045,
+        ),
+        blush,
+      );
+    }
   }
 
   void _drawEyes(Canvas canvas, double w, double h) {
-    final eyePaint = Paint()
-      ..color = _eyeDark
-      ..style = PaintingStyle.fill;
-    final highlightPaint = Paint()
-      ..color = _white
-      ..style = PaintingStyle.fill;
+    const leftX = 0.385;
+    const rightX = 0.615;
+    const eyeY = 0.38;
+
+    final eyePaint = Paint()..color = _eyeDark;
+    final highlightPaint = Paint()..color = _white;
 
     switch (mood) {
       case CharacterMood.happy || CharacterMood.cheering:
-        // Happy ^^ eyes (arcs)
         final happyPaint = Paint()
           ..color = _eyeDark
           ..style = PaintingStyle.stroke
-          ..strokeWidth = w * 0.025
+          ..strokeWidth = w * 0.028
           ..strokeCap = StrokeCap.round;
-        canvas.drawArc(
-          Rect.fromCenter(
-            center: Offset(w * 0.35, h * 0.37),
-            width: w * 0.10,
-            height: h * 0.08,
-          ),
-          math.pi,
-          math.pi,
-          false,
-          happyPaint,
-        );
-        canvas.drawArc(
-          Rect.fromCenter(
-            center: Offset(w * 0.53, h * 0.37),
-            width: w * 0.10,
-            height: h * 0.08,
-          ),
-          math.pi,
-          math.pi,
-          false,
-          happyPaint,
-        );
+        for (final dx in [leftX, rightX]) {
+          canvas.drawArc(
+            Rect.fromCenter(
+              center: Offset(w * dx, h * eyeY),
+              width: w * 0.11,
+              height: h * 0.09,
+            ),
+            math.pi,
+            math.pi,
+            false,
+            happyPaint,
+          );
+        }
 
       case CharacterMood.sleeping:
-        // Zzz eyes (dashes)
         final sleepPaint = Paint()
           ..color = _eyeDark
           ..style = PaintingStyle.stroke
-          ..strokeWidth = w * 0.025
+          ..strokeWidth = w * 0.028
           ..strokeCap = StrokeCap.round;
-        canvas
-          ..drawLine(
-            Offset(w * 0.31, h * 0.37),
-            Offset(w * 0.39, h * 0.37),
-            sleepPaint,
-          )
-          ..drawLine(
-            Offset(w * 0.49, h * 0.37),
-            Offset(w * 0.57, h * 0.37),
+        for (final dx in [leftX, rightX]) {
+          canvas.drawLine(
+            Offset(w * (dx - 0.04), h * eyeY),
+            Offset(w * (dx + 0.04), h * eyeY),
             sleepPaint,
           );
+        }
 
-      case CharacterMood.idle ||
-            CharacterMood.studying:
-        // Normal round eyes
-        canvas
-          ..drawCircle(Offset(w * 0.35, h * 0.37), w * 0.055, eyePaint)
-          ..drawCircle(Offset(w * 0.53, h * 0.37), w * 0.055, eyePaint)
-          // highlights
-          ..drawCircle(Offset(w * 0.33, h * 0.36), w * 0.018, highlightPaint)
-          ..drawCircle(Offset(w * 0.51, h * 0.36), w * 0.018, highlightPaint);
+      case CharacterMood.idle || CharacterMood.studying:
+        for (final dx in [leftX, rightX]) {
+          canvas.drawCircle(Offset(w * dx, h * eyeY), w * 0.06, eyePaint);
+          canvas.drawCircle(
+            Offset(w * (dx - 0.02), h * (eyeY - 0.012)),
+            w * 0.02,
+            highlightPaint,
+          );
+        }
     }
   }
 
@@ -458,11 +409,12 @@ class _DogPainter extends CustomPainter {
 
     switch (mood) {
       case CharacterMood.happy || CharacterMood.cheering:
+        // Open smile (two arcs meeting under the nose)
         canvas.drawArc(
           Rect.fromCenter(
-            center: Offset(w * 0.44, h * 0.46),
-            width: w * 0.16,
-            height: h * 0.08,
+            center: Offset(w * 0.5, h * 0.47),
+            width: w * 0.18,
+            height: h * 0.10,
           ),
           0,
           math.pi,
@@ -471,18 +423,27 @@ class _DogPainter extends CustomPainter {
         );
       case CharacterMood.sleeping:
         canvas.drawLine(
-          Offset(w * 0.38, h * 0.48),
-          Offset(w * 0.50, h * 0.48),
+          Offset(w * 0.44, h * 0.49),
+          Offset(w * 0.56, h * 0.49),
           mouthPaint,
         );
       case CharacterMood.idle || CharacterMood.studying:
-        // Slight smile
+        // Gentle "w" smile
         canvas.drawArc(
           Rect.fromCenter(
-            center: Offset(w * 0.44, h * 0.47),
-            width: w * 0.12,
-            height: h * 0.06,
-          ),
+              center: Offset(w * 0.455, h * 0.475),
+              width: w * 0.09,
+              height: h * 0.05),
+          0,
+          math.pi,
+          false,
+          mouthPaint,
+        );
+        canvas.drawArc(
+          Rect.fromCenter(
+              center: Offset(w * 0.545, h * 0.475),
+              width: w * 0.09,
+              height: h * 0.05),
           0,
           math.pi,
           false,
@@ -492,26 +453,25 @@ class _DogPainter extends CustomPainter {
   }
 
   void _drawChestBadge(Canvas canvas, double w, double h) {
-    // Badge background circle
-    final badgePaint = Paint()
-      ..color = primaryColor
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(w * 0.43, h * 0.68), w * 0.095, badgePaint);
+    final center = Offset(w * 0.5, h * 0.76);
+    final radius = w * 0.10;
 
-    // Outline
-    final outlinePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.015;
-    canvas.drawCircle(Offset(w * 0.43, h * 0.68), w * 0.095, outlinePaint);
+    canvas.drawCircle(center, radius, Paint()..color = primaryColor);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.015,
+    );
 
-    // "S" text
     final textPainter = TextPainter(
       text: TextSpan(
         text: 'S',
         style: TextStyle(
           color: Colors.white,
-          fontSize: w * 0.12,
+          fontSize: w * 0.13,
           fontWeight: FontWeight.w900,
           height: 1,
         ),
@@ -522,8 +482,8 @@ class _DogPainter extends CustomPainter {
     textPainter.paint(
       canvas,
       Offset(
-        w * 0.43 - textPainter.width / 2,
-        h * 0.68 - textPainter.height / 2,
+        center.dx - textPainter.width / 2,
+        center.dy - textPainter.height / 2,
       ),
     );
   }

@@ -46,6 +46,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Social login (provider: 'google' | 'kakao').
+  Future<void> socialLogin(String provider) async {
+    state = const AuthState.loading();
+    try {
+      final user = await _repository.socialLogin(provider);
+      state = AuthState.authenticated(user);
+    } catch (e) {
+      state = AuthState.error(e.toString());
+    }
+  }
+
+  /// Verify an email is registered before allowing a reset.
+  Future<void> requestPasswordReset(String email) =>
+      _repository.requestPasswordReset(email);
+
+  /// Set a new password for an existing account.
+  Future<void> resetPassword(String email, String newPassword) =>
+      _repository.resetPassword(email, newPassword);
+
   /// Log out and clear local session.
   Future<void> logout() async {
     state = const AuthState.loading();

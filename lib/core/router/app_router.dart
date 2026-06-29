@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/router/route_names.dart';
 import 'package:studyverse/shared/widgets/app_bottom_nav.dart';
 import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
-import 'package:studyverse/features/auth/domain/models/auth_model.dart';
 
 // AI Tools screen imports
 import 'package:studyverse/features/ai_tools/presentation/ai_tools_screen.dart';
@@ -25,6 +24,9 @@ import 'package:studyverse/features/ai_tools/presentation/study_efficiency_scree
 import 'package:studyverse/features/splash/presentation/splash_screen.dart';
 import 'package:studyverse/features/auth/presentation/login_screen.dart';
 import 'package:studyverse/features/auth/presentation/register_screen.dart';
+import 'package:studyverse/features/auth/presentation/forgot_password_screen.dart';
+import 'package:studyverse/features/legal/presentation/terms_screen.dart';
+import 'package:studyverse/features/legal/data/legal_documents.dart';
 import 'package:studyverse/features/home/presentation/home_screen.dart';
 import 'package:studyverse/features/statistics/presentation/statistics_screen.dart';
 import 'package:studyverse/features/calendar/presentation/calendar_screen.dart';
@@ -139,10 +141,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.forgotPassword,
         name: RouteNames.forgotPassword,
-        pageBuilder: (context, state) => _slidePage(
-          state,
-          const _PlaceholderScreen(title: '비밀번호 찾기'),
-        ),
+        pageBuilder: (context, state) =>
+            _slidePage(state, const ForgotPasswordScreen()),
+      ),
+
+      // ── Legal documents ─────────────────────────────────────────────────
+      GoRoute(
+        path: '/terms',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const TermsScreen(document: termsOfService)),
+      ),
+      GoRoute(
+        path: '/privacy',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const TermsScreen(document: privacyPolicy)),
       ),
 
       // ── Main shell (bottom nav) ─────────────────────────────────────────
