@@ -104,15 +104,27 @@ Future<void> _initHive() async {
   try {
     final appDocDir = await getApplicationDocumentsDirectory();
     await Hive.initFlutter(appDocDir.path);
-    await Future.wait([
+    await _openHiveBoxes();
+  } catch (e) {
+    debugPrint('[Hive] Init failed ($e), attempting recovery...');
+    try {
+      // Delete potentially corrupted box files and retry once
+      for (final name in ['settings', 'study_cache', 'user_cache']) {
+        await Hive.deleteBoxFromDisk(name);
+      }
+      await _openHiveBoxes();
+      debugPrint('[Hive] Recovery succeeded');
+    } catch (e2) {
+      debugPrint('[Hive] Recovery failed: $e2 — running without persistence');
+    }
+  }
+}
+
+Future<void> _openHiveBoxes() => Future.wait([
       Hive.openBox<dynamic>('settings'),
       Hive.openBox<dynamic>('study_cache'),
       Hive.openBox<dynamic>('user_cache'),
     ]);
-  } catch (e) {
-    debugPrint('[Hive] Init skipped: $e');
-  }
-}
 
 Future<SharedPreferences> _initSharedPrefs() async {
   try {
