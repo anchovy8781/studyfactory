@@ -67,14 +67,32 @@ jobs:
               "project_id": "studyverse-placeholder",
               "storage_bucket": "studyverse-placeholder.appspot.com"
             },
-            "client": [{
-              "client_info": {
-                "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
-                "android_client_info": { "package_name": "com.studyverse.app" }
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+                  "android_client_info": { "package_name": "com.studyverse.app" }
+                },
+                "api_key": [{ "current_key": "placeholder" }],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
               },
-              "api_key": [{ "current_key": "placeholder" }],
-              "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
-            }],
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:1111111111111111",
+                  "android_client_info": { "package_name": "com.studyverse.app.debug" }
+                },
+                "api_key": [{ "current_key": "placeholder" }],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+              },
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:2222222222222222",
+                  "android_client_info": { "package_name": "com.studyverse.app.profile" }
+                },
+                "api_key": [{ "current_key": "placeholder" }],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+              }
+            ],
             "configuration_version": "1"
           }
           EOF
