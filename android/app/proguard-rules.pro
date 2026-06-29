@@ -1,29 +1,39 @@
-# ── Flutter ───────────────────────────────────────────────────────────────────
+# ── Flutter engine ────────────────────────────────────────────────────────────
 -keep class io.flutter.** { *; }
 -keep class io.flutter.embedding.** { *; }
 -dontwarn io.flutter.embedding.**
 
-# ── Firebase ──────────────────────────────────────────────────────────────────
+# ── Dart VM / embedding ───────────────────────────────────────────────────────
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
+
+# ── Firebase / Google Services ────────────────────────────────────────────────
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
+-keep class com.google.android.datatransport.** { *; }
 -dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
+-dontwarn com.google.android.datatransport.**
 
-# ── Crashlytics ───────────────────────────────────────────────────────────────
--keepattributes *Annotation*
+# ── Firebase Crashlytics ──────────────────────────────────────────────────────
 -keepattributes SourceFile,LineNumberTable
 -keep public class * extends java.lang.Exception
+-keep class com.google.firebase.crashlytics.** { *; }
+
+# ── Protobuf (Firebase internal) ──────────────────────────────────────────────
+-keep class com.google.protobuf.** { *; }
+-dontwarn com.google.protobuf.**
 
 # ── Kotlin ────────────────────────────────────────────────────────────────────
 -keep class kotlin.** { *; }
 -keep class kotlin.Metadata { *; }
 -dontwarn kotlin.**
--keepclassmembers class **$WhenMappings {
-    <fields>;
-}
--keepclassmembers class kotlin.Metadata {
-    public <methods>;
-}
+-keepclassmembers class **$WhenMappings { <fields>; }
+-keepclassmembers class kotlin.Metadata { public <methods>; }
+
+# ── AndroidX ──────────────────────────────────────────────────────────────────
+-keep class androidx.** { *; }
+-dontwarn androidx.**
 
 # ── Google ML Kit ─────────────────────────────────────────────────────────────
 -keep class com.google.mlkit.** { *; }
@@ -33,33 +43,28 @@
 -keep class androidx.camera.** { *; }
 -dontwarn androidx.camera.**
 
-# ── OkHttp / Retrofit (used indirectly) ──────────────────────────────────────
+# ── OkHttp (Dio uses this on Android) ────────────────────────────────────────
 -dontwarn okhttp3.**
 -dontwarn okio.**
--dontwarn retrofit2.**
 -keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
 -keepattributes Signature
 -keepattributes Exceptions
 
-# ── Hive ──────────────────────────────────────────────────────────────────────
--keep class com.hive.** { *; }
--keep class ** implements com.hive.TypeAdapter { *; }
-
-# ── Biometric ─────────────────────────────────────────────────────────────────
--keep class androidx.biometric.** { *; }
-
-# ── Generic rules ─────────────────────────────────────────────────────────────
+# ── Annotations (required for Crashlytics + reflection) ──────────────────────
 -keepattributes *Annotation*
 -keepattributes EnclosingMethod
 -keepattributes InnerClasses
--keepattributes Signature
 
-# Remove logging in release.
+# ── Reflection safety ─────────────────────────────────────────────────────────
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# ── Remove verbose logging in release ────────────────────────────────────────
 -assumenosideeffects class android.util.Log {
     public static boolean isLoggable(java.lang.String, int);
     public static int v(...);
     public static int i(...);
     public static int w(...);
     public static int d(...);
-    public static int e(...);
 }

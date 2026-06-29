@@ -82,10 +82,10 @@ class AuthRepository {
   /// Returns the currently authenticated [User] using the stored token,
   /// or `null` if no valid session exists.
   Future<User?> getCurrentUser() async {
-    final token = await _secureStorage.read(key: _accessTokenKey);
-    if (token == null) return null;
-
     try {
+      final token = await _secureStorage.read(key: _accessTokenKey);
+      if (token == null) return null;
+
       final response = await _dio.get(
         '/auth/me',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
@@ -93,12 +93,13 @@ class AuthRepository {
       return User.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
-        // Token expired — try refresh.
         final refreshed = await _tryRefreshToken();
         if (refreshed) return getCurrentUser();
         await _clearTokens();
-        return null;
       }
+      return null;
+    } catch (_) {
+      // PlatformException from Keystore or unexpected errors — treat as no session.
       return null;
     }
   }
@@ -189,7 +190,12 @@ final _dioProvider = Provider<Dio>((ref) {
 
 final _secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   return const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      // If the Keystore is corrupt (e.g. after factory-reset or reinstall),
+      // clear stored values rather than crashing.
+      resetOnError: true,
+    ),
   );
 });
 

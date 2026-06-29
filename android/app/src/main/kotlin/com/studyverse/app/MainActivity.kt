@@ -1,12 +1,19 @@
 package com.studyverse.app
 
+import android.os.Bundle
+import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterFragmentActivity
 
 /**
  * Main entry point for the StudyVerse Android app.
  *
- * Uses [FlutterFragmentActivity] instead of [FlutterActivity] because:
- *  - [local_auth] requires Fragment support for biometric prompts.
- *  - Some camera plugins also work better with Fragment back-stack support.
+ * Uses [FlutterFragmentActivity] for biometric prompt support (local_auth).
+ * WindowCompat.setDecorFitsSystemWindows(false) enables true edge-to-edge
+ * on Android 10+ (API 29+), letting Flutter draw behind the status/nav bars.
  */
-class MainActivity : FlutterFragmentActivity()
+class MainActivity : FlutterFragmentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+    }
+}

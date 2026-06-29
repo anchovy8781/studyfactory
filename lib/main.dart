@@ -27,15 +27,26 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Transparent system bars for an edge-to-edge look.
+  // Edge-to-edge (Android 10+ native support).
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       systemNavigationBarColor: Colors.transparent,
+      statusBarContrastEnforced: false,
+      systemNavigationBarContrastEnforced: false,
       statusBarIconBrightness: Brightness.dark,
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+
+  // Forward Flutter framework errors before runApp so the handler is always set.
+  FlutterError.onError = (details) {
+    debugPrint('[Flutter] ${details.exceptionAsString()}');
+    if (!kDebugMode && _firebaseInitialized) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    }
+  };
 
   // Run everything inside a guarded zone so async errors are captured too.
   await runZonedGuarded(
@@ -59,10 +70,9 @@ Future<void> main() async {
       );
     },
     (error, stack) {
+      debugPrint('[main] Uncaught error: $error\n$stack');
       if (!kDebugMode && _firebaseInitialized) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      } else {
-        debugPrint('[main] Uncaught error: $error\n$stack');
       }
     },
   );
@@ -77,23 +87,17 @@ Future<void> _initFirebase() async {
     await Firebase.initializeApp();
     _firebaseInitialized = true;
 
-    // Forward Flutter framework errors to Crashlytics.
     if (!kDebugMode) {
-      FlutterError.onError =
-          FirebaseCrashlytics.instance.recordFlutterFatalError;
       PlatformDispatcher.instance.onError = (error, stack) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
         return true;
       };
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+      await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
+    } else {
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
+      await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(false);
     }
-
-    // Disable Crashlytics data collection in debug mode.
-    await FirebaseCrashlytics.instance
-        .setCrashlyticsCollectionEnabled(!kDebugMode);
-
-    // Analytics opt-in defaults to true; disable in debug.
-    await FirebaseAnalytics.instance
-        .setAnalyticsCollectionEnabled(!kDebugMode);
   } catch (e) {
     // Placeholder / missing google-services.json in debug — skip Firebase.
     debugPrint('[Firebase] Init skipped: $e');
