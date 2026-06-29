@@ -44,13 +44,12 @@ android {
 
     defaultConfig {
         applicationId 'com.studyverse.app'
-        minSdkVersion 21
+        minSdkVersion 28
         targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
 
-        // Room / SQLite support for older API levels.
         vectorDrawables.useSupportLibrary = true
 
         // Manifest placeholders

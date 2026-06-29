@@ -18,11 +18,10 @@
     <!-- Microphone (future voice features) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- Storage -->
+    <!-- Storage (API 28 = Android 9 minimum) -->
+    <!-- READ_EXTERNAL_STORAGE valid on API 28-32; superseded by READ_MEDIA_* on 33+ -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
