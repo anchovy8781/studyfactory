@@ -50,7 +50,7 @@ Future<void> main() async {
       final sharedPrefs = results[2] as SharedPreferences;
 
       // ── Analytics: first-open event ────────────────────────────────────
-      if (!kDebugMode) {
+      if (!kDebugMode && _firebaseInitialized) {
         unawaited(
           FirebaseAnalytics.instance.logAppOpen(),
         );
@@ -67,7 +67,7 @@ Future<void> main() async {
     },
     (error, stack) {
       // Forward all uncaught errors to Crashlytics in release mode.
-      if (!kDebugMode) {
+      if (!kDebugMode && _firebaseInitialized) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       } else {
         debugPrint('[main] Uncaught error: $error\n$stack');
@@ -78,26 +78,34 @@ Future<void> main() async {
 
 // ── Initialisation helpers ────────────────────────────────────────────────────
 
+bool _firebaseInitialized = false;
+
 Future<void> _initFirebase() async {
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+    _firebaseInitialized = true;
 
-  // Forward Flutter framework errors to Crashlytics.
-  if (!kDebugMode) {
-    FlutterError.onError =
-        FirebaseCrashlytics.instance.recordFlutterFatalError;
-    PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      return true;
-    };
+    // Forward Flutter framework errors to Crashlytics.
+    if (!kDebugMode) {
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+    }
+
+    // Disable Crashlytics data collection in debug mode.
+    await FirebaseCrashlytics.instance
+        .setCrashlyticsCollectionEnabled(!kDebugMode);
+
+    // Analytics opt-in defaults to true; disable in debug.
+    await FirebaseAnalytics.instance
+        .setAnalyticsCollectionEnabled(!kDebugMode);
+  } catch (e) {
+    // Placeholder / missing google-services.json in debug — skip Firebase.
+    debugPrint('[Firebase] Init skipped: $e');
   }
-
-  // Disable Crashlytics data collection in debug mode.
-  await FirebaseCrashlytics.instance
-      .setCrashlyticsCollectionEnabled(!kDebugMode);
-
-  // Analytics opt-in defaults to true; disable in debug.
-  await FirebaseAnalytics.instance
-      .setAnalyticsCollectionEnabled(!kDebugMode);
 }
 
 Future<void> _initHive() async {
