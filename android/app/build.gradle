@@ -94,7 +94,6 @@ android {
             )
             firebaseCrashlytics {
                 mappingFileUploadEnabled true
-                nativeSymbolUploadEnabled true
             }
         }
 
@@ -104,6 +103,10 @@ android {
             versionNameSuffix '-profile'
             shrinkResources false
             minifyEnabled false
+            firebaseCrashlytics {
+                mappingFileUploadEnabled false
+                nativeSymbolUploadEnabled false
+            }
         }
     }
 
