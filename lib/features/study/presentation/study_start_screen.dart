@@ -329,12 +329,12 @@ class _StudyStartScreenState extends ConsumerState<StudyStartScreen> {
       children: [
         AppButton(
           label: '${subject.emoji} 공부 시작',
-          onPressed: () => context.go('/study/certification'),
+          onPressed: () => context.push('/study/certification'),
           size: AppButtonSize.large,
         ).animate().fadeIn(duration: 500.ms, delay: 500.ms).slideY(begin: 0.1, end: 0),
         const SizedBox(height: AppSizes.spaceMd),
         TextButton.icon(
-          onPressed: () => context.go('/study/timer'),
+          onPressed: () => context.push('/study/timer'),
           icon: const Icon(Icons.timer_rounded, color: AppColors.textSecondary, size: AppSizes.iconMd),
           label: Text(
             '타이머만 사용하기',

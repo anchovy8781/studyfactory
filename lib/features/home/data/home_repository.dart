@@ -1,71 +1,62 @@
-import 'package:dio/dio.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:studyverse/features/home/domain/models/home_model.dart';
 
+/// Reads the signed-in user's real home data from Firestore.
+///
+/// No mock/dummy values — a brand-new account starts at zero. Fields that the
+/// app does not track yet (today's hours, focus score, sessions) default to 0
+/// until study sessions populate them.
 class HomeRepository {
-  HomeRepository({required Dio dio, required FlutterSecureStorage secureStorage})
-      : _dio = dio,
-        _secureStorage = secureStorage;
+  HomeRepository({FirebaseAuth? auth, FirebaseFirestore? firestore})
+      : _auth = auth ?? FirebaseAuth.instance,
+        _db = firestore ?? FirebaseFirestore.instance;
 
-  final Dio _dio;
-  final FlutterSecureStorage _secureStorage;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _db;
 
   Future<HomeData> fetchHomeData() async {
-    final token = await _secureStorage.read(key: 'access_token');
+    final user = _auth.currentUser;
+    if (user == null) return _empty('사용자');
 
     try {
-      final response = await _dio.get(
-        '/home',
-        options: Options(
-          headers: token != null ? {'Authorization': 'Bearer $token'} : null,
-        ),
+      final doc = await _db.collection('users').doc(user.uid).get();
+      final d = doc.data();
+      if (d == null) return _empty(user.displayName ?? '사용자');
+
+      return HomeData(
+        userNickname:
+            (d['nickname'] as String?) ?? user.displayName ?? '사용자',
+        todayStudyHours: (d['todayStudyHours'] as num?)?.toDouble() ?? 0.0,
+        targetHours: (d['targetHours'] as num?)?.toDouble() ?? 5.0,
+        streakDays: (d['streakDays'] as num?)?.toInt() ?? 0,
+        bestStreak: (d['bestStreak'] as num?)?.toInt() ?? 0,
+        points: (d['points'] as num?)?.toInt() ?? 0,
+        focusScore: (d['focusScore'] as num?)?.toDouble() ?? 0.0,
+        recentSessions: (d['recentSessions'] as num?)?.toInt() ?? 0,
+        isStudying: (d['isStudying'] as bool?) ?? false,
       );
-      return HomeData.fromJson(response.data as Map<String, dynamic>);
-    } on DioException {
-      // Return mock data so the UI is always functional during development.
-      return _mockHomeData();
     } catch (_) {
-      return _mockHomeData();
+      return _empty(user.displayName ?? '사용자');
     }
   }
 
-  HomeData _mockHomeData() {
-    return const HomeData(
-      userNickname: '공부왕',
-      todayStudyHours: 3.75,
-      targetHours: 5.0,
-      streakDays: 21,
-      bestStreak: 45,
-      points: 12480,
-      focusScore: 92.0,
-      recentSessions: 3,
-      isStudying: false,
-    );
-  }
+  HomeData _empty(String nickname) => HomeData(
+        userNickname: nickname,
+        todayStudyHours: 0.0,
+        targetHours: 5.0,
+        streakDays: 0,
+        bestStreak: 0,
+        points: 0,
+        focusScore: 0.0,
+        recentSessions: 0,
+        isStudying: false,
+      );
 }
 
 // ── Providers ──────────────────────────────────────────────────────────────
 
-final _homeRepoDioProvider = Provider<Dio>((ref) {
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://api.studyverse.app/v1',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
-    ),
-  );
-});
-
-final _homeRepoStorageProvider = Provider<FlutterSecureStorage>((ref) {
-  return const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
-});
-
 final homeRepositoryProvider = Provider<HomeRepository>((ref) {
-  return HomeRepository(
-    dio: ref.watch(_homeRepoDioProvider),
-    secureStorage: ref.watch(_homeRepoStorageProvider),
-  );
+  return HomeRepository();
 });

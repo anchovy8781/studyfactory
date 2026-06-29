@@ -9,7 +9,6 @@ import 'package:studyverse/shared/widgets/app_button.dart';
 import 'package:studyverse/shared/widgets/app_logo.dart';
 import 'package:studyverse/features/home/domain/models/home_model.dart';
 import 'package:studyverse/features/home/presentation/providers/home_provider.dart';
-import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -19,20 +18,12 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _selectedNavIndex = 0;
-
-  static const _navItems = [
-    _NavItem(icon: Icons.home_rounded, label: '홈'),
-    _NavItem(icon: Icons.bar_chart_rounded, label: '통계'),
-    _NavItem(icon: Icons.menu_book_rounded, label: '공부'),
-    _NavItem(icon: Icons.people_rounded, label: '커뮤니티'),
-    _NavItem(icon: Icons.person_rounded, label: '마이'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final homeState = ref.watch(homeProvider);
 
+    // No bottomNavigationBar here — the shell (AppShellScaffold) provides the
+    // single shared bottom navigation. A second one here caused two bars.
     return Scaffold(
       backgroundColor: AppColors.background,
       body: homeState.when(
@@ -40,72 +31,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         loading: () => const _LoadingView(),
         loaded: (data) => _HomeContent(
           data: data,
-          onStartStudy: () => context.go('/study/start'),
+          onStartStudy: () => context.push('/study/start'),
           onRefresh: () => ref.read(homeProvider.notifier).refresh(),
         ),
         error: (msg) => _ErrorView(message: msg, onRetry: () => ref.read(homeProvider.notifier).refresh()),
-      ),
-      bottomNavigationBar: _buildBottomNav(),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: SizedBox(
-          height: AppSizes.bottomNavHeight,
-          child: Row(
-            children: List.generate(_navItems.length, (i) {
-              final item = _navItems[i];
-              final isSelected = i == _selectedNavIndex;
-              return Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    setState(() => _selectedNavIndex = i);
-                    if (i == 2) context.go('/study/start');
-                  },
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSizes.spaceLg,
-                          vertical: AppSizes.spaceXs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primaryContainer : Colors.transparent,
-                          borderRadius: BorderRadius.circular(AppSizes.radiusRound),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          size: AppSizes.bottomNavIconSize,
-                          color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.label,
-                        style: isSelected ? AppTextStyles.navLabelSelected : AppTextStyles.navLabel.copyWith(color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
       ),
     );
   }
@@ -514,7 +443,7 @@ class _HomeContent extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSizes.spaceLg),
                 GestureDetector(
-                  onTap: () => context.go('/study/start'),
+                  onTap: () => context.push('/study/start'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSizes.spaceLg,
@@ -787,10 +716,4 @@ class _ErrorView extends StatelessWidget {
       ),
     );
   }
-}
-
-class _NavItem {
-  const _NavItem({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
 }
