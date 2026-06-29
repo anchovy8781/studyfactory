@@ -119,30 +119,6 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="studyverse_default" />
 
-        <!-- Study timer foreground service -->
-        <service
-            android:name=".StudyTimerService"
-            android:exported="false"
-            android:foregroundServiceType="camera" />
-
-        <!-- Boot receiver (reschedule local notifications) -->
-        <receiver
-            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
-            </intent-filter>
-        </receiver>
-
-        <!-- flutter_local_notifications broadcast receiver -->
-        <receiver
-            android:name="com.dexterous.flutterlocalnotifications.FlutterLocalNotificationsPlugin"
-            android:exported="false">
-        </receiver>
-
         <!-- Google ML Kit: face detection model -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
