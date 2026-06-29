@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'package:studyverse/admin/admin_app.dart';
+import 'package:studyverse/firebase_options.dart';
 
 /// Entry point for the StudyVerse Admin web panel (PC + mobile browser).
 ///
@@ -10,10 +11,10 @@ import 'package:studyverse/admin/admin_app.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   } catch (e) {
-    // Web Firebase config is supplied via web/index.html; if missing the
-    // app still renders and surfaces a clear error on sign-in.
     debugPrint('[AdminWeb] Firebase init: $e');
   }
   runApp(const AdminApp());

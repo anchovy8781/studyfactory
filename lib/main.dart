@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:studyverse/app.dart';
+import 'package:studyverse/firebase_options.dart';
 
 /// SharedPreferences singleton provider (injected via ProviderScope override).
 final sharedPreferencesProvider =
@@ -82,7 +83,9 @@ bool _firebaseInitialized = false;
 
 Future<void> _initFirebase() async {
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     _firebaseInitialized = true;
 
     if (!kDebugMode) {
