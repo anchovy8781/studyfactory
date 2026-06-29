@@ -6,7 +6,7 @@ import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
-import 'package:studyverse/shared/widgets/study_character.dart';
+import 'package:studyverse/shared/widgets/app_logo.dart';
 
 // ── Subject data ──────────────────────────────────────────────────────────
 
@@ -108,9 +108,9 @@ class _StudyStartScreenState extends ConsumerState<StudyStartScreen> {
   }
 
   Widget _buildCharacterSection() {
-    final character = StudyCharacter(
+    const character = AppLogo(
       size: AppSizes.characterSm + 20,
-      mood: CharacterMood.cheering,
+      onSurface: true,
     );
     return Container(
       padding: const EdgeInsets.all(AppSizes.paddingCardLg),

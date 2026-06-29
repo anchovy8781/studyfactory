@@ -7,7 +7,7 @@ import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
-import 'package:studyverse/shared/widgets/study_character.dart';
+import 'package:studyverse/shared/widgets/app_logo.dart';
 
 // ── Session model ─────────────────────────────────────────────────────────
 
@@ -308,12 +308,8 @@ class StudyTimerScreen extends ConsumerWidget {
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Dog character (in center)
-                StudyCharacter(
-                  size: 70,
-                  mood: state.isRunning ? CharacterMood.studying : CharacterMood.happy,
-                  animate: state.isRunning,
-                ),
+                // Brand mark (in center)
+                const AppLogo(size: 70),
                 const SizedBox(height: AppSizes.spaceSm),
                 Text(
                   timeStr,

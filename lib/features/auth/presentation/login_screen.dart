@@ -7,7 +7,7 @@ import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
 
-import 'package:studyverse/shared/widgets/study_character.dart';
+import 'package:studyverse/shared/widgets/app_logo.dart';
 import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
 import 'package:studyverse/features/auth/domain/models/auth_model.dart';
 
@@ -108,10 +108,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 curve: Curves.easeOut,
               ),
             ],
-            child: StudyCharacter(
-              size: AppSizes.characterMd,
-              mood: CharacterMood.happy,
-            ),
+            child: const AppLogo(size: AppSizes.characterMd, onSurface: true),
           ),
           const SizedBox(height: AppSizes.spaceLg),
           Animate(
@@ -424,7 +421,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     required Widget icon,
   }) {
     return GestureDetector(
-      onTap: () => ref.read(authProvider.notifier).socialLogin(provider),
+      onTap: () {
+        if (provider == 'google') {
+          ref.read(authProvider.notifier).signInWithGoogle();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                  '카카오 로그인은 Firebase Cloud Function 설정이 필요합니다.'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd)),
+              margin: const EdgeInsets.all(AppSizes.spaceLg),
+            ),
+          );
+        }
+      },
       child: Container(
         height: AppSizes.buttonHeightMd,
         decoration: BoxDecoration(

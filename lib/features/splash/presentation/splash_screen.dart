@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
-import 'package:studyverse/shared/widgets/study_character.dart';
 import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -67,9 +66,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     const Spacer(flex: 2),
                     // Logo
                     _buildLogo(),
-                    const SizedBox(height: AppSizes.spaceXl),
-                    // Character
-                    _buildCharacter(),
                     const SizedBox(height: AppSizes.space2xl),
                     // App name
                     _buildAppName(),
@@ -174,29 +170,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         .animate()
         .fadeIn(duration: 600.ms, delay: 200.ms)
         .scale(begin: const Offset(0.6, 0.6), end: const Offset(1, 1), curve: Curves.elasticOut);
-  }
-
-  Widget _buildCharacter() {
-    return Animate(
-      effects: const [
-        FadeEffect(
-          duration: Duration(milliseconds: 700),
-          delay: Duration(milliseconds: 500),
-        ),
-        SlideEffect(
-          begin: Offset(0, 0.3),
-          end: Offset.zero,
-          curve: Curves.easeOutBack,
-          duration: Duration(milliseconds: 700),
-          delay: Duration(milliseconds: 500),
-        ),
-      ],
-      child: StudyCharacter(
-        size: AppSizes.characterLg,
-        mood: CharacterMood.cheering,
-        animate: true,
-      ),
-    );
   }
 
   Widget _buildAppName() {

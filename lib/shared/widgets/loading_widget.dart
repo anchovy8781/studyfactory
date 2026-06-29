@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
-import 'package:studyverse/shared/widgets/study_character.dart';
+import 'package:studyverse/shared/widgets/app_logo.dart';
 
-/// Full-screen loading indicator with the StudyVerse mascot.
+/// Full-screen loading indicator with the StudyVerse brand mark.
 class LoadingWidget extends StatelessWidget {
   const LoadingWidget({
     super.key,
@@ -23,10 +23,7 @@ class LoadingWidget extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (showCharacter) ...[
-            const StudyCharacter(
-              size: AppSizes.characterMd,
-              mood: CharacterMood.studying,
-            ),
+            const AppLogo(size: AppSizes.characterMd),
             const SizedBox(height: AppSizes.spaceLg),
           ] else ...[
             const _PulsingLoader(),

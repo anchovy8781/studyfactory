@@ -1,0 +1,11 @@
+{
+  "name": "StudyVerse Admin",
+  "short_name": "SV Admin",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F8FAFF",
+  "theme_color": "#1A73E8",
+  "description": "StudyVerse 관리자 패널 (PC · 모바일 호환)",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}

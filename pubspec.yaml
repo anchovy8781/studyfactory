@@ -35,11 +35,16 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   path_provider: ^2.1.0
 
-  # Firebase
-  firebase_core: ^2.24.0
-  firebase_messaging: ^14.7.0
-  firebase_analytics: ^10.7.0
-  firebase_crashlytics: ^3.4.0
+  # Firebase (real backend: Auth + Firestore) — matched 2.32 release train
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.20.0
+  cloud_firestore: ^4.17.5
+  firebase_messaging: ^14.9.4
+  firebase_analytics: ^10.10.7
+  firebase_crashlytics: ^3.5.7
+
+  # Social sign-in
+  google_sign_in: ^6.2.1
 
   # Camera & ML
   camera: ^0.10.5+9

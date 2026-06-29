@@ -11,7 +11,7 @@ import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/core/services/face_detection_service.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
-import 'package:studyverse/shared/widgets/study_character.dart';
+import 'package:studyverse/shared/widgets/app_logo.dart';
 
 // ── Analysis state model ──────────────────────────────────────────────────────
 
@@ -389,13 +389,7 @@ class _StudyCertificationScreenState
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  StudyCharacter(
-                    size: AppSizes.characterSm + 10,
-                    mood: state.isPaused
-                        ? CharacterMood.sleeping
-                        : CharacterMood.studying,
-                    animate: !state.isPaused,
-                  ),
+                  const AppLogo(size: AppSizes.characterSm + 10),
                   const SizedBox(height: AppSizes.spaceSm),
                   Text(
                     timeStr,

@@ -422,20 +422,3 @@ class AppShellScaffold extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Placeholder (only for truly unimplemented routes)
-// ---------------------------------------------------------------------------
-
-class _PlaceholderScreen extends StatelessWidget {
-  const _PlaceholderScreen({required this.title});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(title, style: const TextStyle(fontSize: 18))),
-    );
-  }
-}

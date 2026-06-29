@@ -135,8 +135,58 @@ jobs:
           echo "3. APK 설치" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           SIZE=$(ls -lh build/app/outputs/flutter-apk/app-release.apk | awk '{print $5}')
-          echo "**APK 크기:** $SIZE (debug 대비 ~60% 작음)" >> $GITHUB_STEP_SUMMARY
+          echo "**APK 크기:** $SIZE" >> $GITHUB_STEP_SUMMARY
+
+  build-admin-web:
+    name: Build Admin Web Panel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+          cache: true
+
+      - name: Fix Pretendard fonts
+        run: |
+          mkdir -p assets/fonts
+          curl -fsSL "https://github.com/orioncactus/pretendard/releases/download/v1.3.9/Pretendard-1.3.9.zip" -o /tmp/pretendard.zip
+          unzip -o -j /tmp/pretendard.zip \
+            "public/static/alternative/Pretendard-Regular.ttf" \
+            "public/static/alternative/Pretendard-Medium.ttf" \
+            "public/static/alternative/Pretendard-SemiBold.ttf" \
+            "public/static/alternative/Pretendard-Bold.ttf" \
+            "public/static/alternative/Pretendard-ExtraBold.ttf" \
+            -d assets/fonts/
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build admin web (Flutter Web — PC + 모바일 브라우저)
+        run: |
+          flutter build web --release \
+            -t lib/admin/admin_main.dart \
+            --base-href /studyverse-admin/
+          echo "Built admin web at build/web"
+
+      - name: Upload admin web
+        uses: actions/upload-artifact@v4
+        with:
+          name: StudyVerse-admin-web
+          path: build/web
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Admin web summary
+        run: |
+          echo "## ✅ 관리자 웹 패널 빌드 완료" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ℹ️ 이전 대비 개선점" >> $GITHUB_STEP_SUMMARY
-          echo "- Debug→Release: AOT 컴파일, JIT 없음 (SELinux 크래시 방지)" >> $GITHUB_STEP_SUMMARY
-          echo "- 폰트 경로 수정: 실제 TTF 파일 정확히 추출" >> $GITHUB_STEP_SUMMARY
+          echo "**StudyVerse-admin-web** 아티팩트를 다운로드해 정적 호스팅" >> $GITHUB_STEP_SUMMARY
+          echo "(Firebase Hosting / Netlify / GitHub Pages 등)하면" >> $GITHUB_STEP_SUMMARY
+          echo "PC·모바일 브라우저에서 접속할 수 있습니다." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> ⚠️ 접속 전 web/index.html의 firebaseConfig를 실제 값으로 교체하세요." >> $GITHUB_STEP_SUMMARY

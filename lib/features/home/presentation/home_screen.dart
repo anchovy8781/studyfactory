@@ -6,7 +6,7 @@ import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
-import 'package:studyverse/shared/widgets/study_character.dart';
+import 'package:studyverse/shared/widgets/app_logo.dart';
 import 'package:studyverse/features/home/domain/models/home_model.dart';
 import 'package:studyverse/features/home/presentation/providers/home_provider.dart';
 import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
@@ -545,11 +545,7 @@ class _HomeContent extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: AppSizes.spaceLg),
-          StudyCharacter(
-            size: AppSizes.characterMd,
-            mood: data.isStudying ? CharacterMood.studying : CharacterMood.happy,
-            animate: true,
-          ),
+          const AppLogo(size: AppSizes.characterMd),
         ],
       ),
     ).animate().fadeIn(duration: 600.ms, delay: 330.ms).slideY(begin: 0.05, end: 0);
