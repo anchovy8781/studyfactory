@@ -7,6 +7,20 @@ import 'package:studyverse/shared/widgets/app_bottom_nav.dart';
 import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
 import 'package:studyverse/features/auth/domain/models/auth_model.dart';
 
+// AI Tools screen imports
+import 'package:studyverse/features/ai_tools/presentation/ai_tools_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/ai_study_plan_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/ai_flashcard_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/ai_wrong_answer_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/ai_question_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/grade_simulation_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/ai_voice_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/ai_ocr_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/ai_mentor_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/pomodoro_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/forgetting_curve_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/study_efficiency_screen.dart';
+
 // Real screen imports
 import 'package:studyverse/features/splash/presentation/splash_screen.dart';
 import 'package:studyverse/features/auth/presentation/login_screen.dart';
@@ -283,6 +297,70 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.admin,
         pageBuilder: (context, state) =>
             _slidePage(state, const AdminDashboardScreen()),
+      ),
+
+      // ── AI Tools ────────────────────────────────────────────────────────
+      GoRoute(
+        path: '/ai-tools',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const AiToolsScreen()),
+        routes: [
+          GoRoute(
+            path: 'study-plan',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const AiStudyPlanScreen()),
+          ),
+          GoRoute(
+            path: 'wrong-answers',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const AiWrongAnswerScreen()),
+          ),
+          GoRoute(
+            path: 'flashcards',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const AiFlashcardScreen()),
+          ),
+          GoRoute(
+            path: 'questions',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const AiQuestionScreen()),
+          ),
+          GoRoute(
+            path: 'grade-sim',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const GradeSimulationScreen()),
+          ),
+          GoRoute(
+            path: 'voice',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const AiVoiceScreen()),
+          ),
+          GoRoute(
+            path: 'ocr',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const AiOcrScreen()),
+          ),
+          GoRoute(
+            path: 'mentor',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const AiMentorScreen()),
+          ),
+          GoRoute(
+            path: 'pomodoro',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const PomodoroScreen()),
+          ),
+          GoRoute(
+            path: 'forgetting-curve',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const ForgettingCurveScreen()),
+          ),
+          GoRoute(
+            path: 'efficiency',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const StudyEfficiencyScreen()),
+          ),
+        ],
       ),
     ],
   );

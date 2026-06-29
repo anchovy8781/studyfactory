@@ -148,6 +148,8 @@ class _HomeContent extends ConsumerWidget {
                 const SizedBox(height: AppSizes.spaceLg),
                 _buildAiCard(context),
                 const SizedBox(height: AppSizes.spaceLg),
+                _buildAiToolsSection(context),
+                const SizedBox(height: AppSizes.spaceLg),
                 _buildQuickStats(),
                 const SizedBox(height: AppSizes.spaceLg),
                 _buildTodayTips(),
@@ -551,6 +553,62 @@ class _HomeContent extends ConsumerWidget {
         ],
       ),
     ).animate().fadeIn(duration: 600.ms, delay: 330.ms).slideY(begin: 0.05, end: 0);
+  }
+
+  Widget _buildAiToolsSection(BuildContext context) {
+    final tools = [
+      (Icons.auto_stories_rounded, '학습 계획', '/ai-tools/study-plan', const Color(0xFF6366F1)),
+      (Icons.style_rounded, '플래시카드', '/ai-tools/flashcards', const Color(0xFF10B981)),
+      (Icons.quiz_rounded, '예상문제', '/ai-tools/questions', const Color(0xFFF59E0B)),
+      (Icons.timer_rounded, '포모도로', '/ai-tools/pomodoro', const Color(0xFF14B8A6)),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('AI 학습 도구', style: AppTextStyles.titleMedium),
+            GestureDetector(
+              onTap: () => context.push('/ai-tools'),
+              child: Text('전체보기', style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.spaceMd),
+        Row(
+          children: tools.map((t) {
+            final (icon, label, route, color) = t;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => context.push(route),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
+                        child: Icon(icon, color: color, size: 18),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(label, style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    ).animate().fadeIn(duration: 600.ms, delay: 450.ms);
   }
 
   Widget _buildQuickStats() {
