@@ -102,6 +102,7 @@ android {
             initWith(buildTypes.release)
             applicationIdSuffix '.profile'
             versionNameSuffix '-profile'
+            shrinkResources false
             minifyEnabled false
         }
     }
