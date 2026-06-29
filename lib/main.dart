@@ -40,20 +40,13 @@ Future<void> main() async {
   // Run everything inside a guarded zone so async errors are captured too.
   await runZonedGuarded(
     () async {
-      // ── Parallel initialisation ─────────────────────────────────────────
-      final results = await Future.wait<dynamic>([
-        _initFirebase(),
-        _initHive(),
-        SharedPreferences.getInstance(),
-      ]);
+      // Each step is individually fault-tolerant so runApp is always reached.
+      await _initFirebase();
+      await _initHive();
+      final sharedPrefs = await _initSharedPrefs();
 
-      final sharedPrefs = results[2] as SharedPreferences;
-
-      // ── Analytics: first-open event ────────────────────────────────────
       if (!kDebugMode && _firebaseInitialized) {
-        unawaited(
-          FirebaseAnalytics.instance.logAppOpen(),
-        );
+        unawaited(FirebaseAnalytics.instance.logAppOpen());
       }
 
       runApp(
@@ -66,7 +59,6 @@ Future<void> main() async {
       );
     },
     (error, stack) {
-      // Forward all uncaught errors to Crashlytics in release mode.
       if (!kDebugMode && _firebaseInitialized) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       } else {
@@ -109,16 +101,25 @@ Future<void> _initFirebase() async {
 }
 
 Future<void> _initHive() async {
-  final appDocDir = await getApplicationDocumentsDirectory();
-  await Hive.initFlutter(appDocDir.path);
+  try {
+    final appDocDir = await getApplicationDocumentsDirectory();
+    await Hive.initFlutter(appDocDir.path);
+    await Future.wait([
+      Hive.openBox<dynamic>('settings'),
+      Hive.openBox<dynamic>('study_cache'),
+      Hive.openBox<dynamic>('user_cache'),
+    ]);
+  } catch (e) {
+    debugPrint('[Hive] Init skipped: $e');
+  }
+}
 
-  // Register Hive adapters here as features are added.
-  // Example: Hive.registerAdapter(StudySessionAdapter());
-
-  // Open commonly used boxes upfront.
-  await Future.wait([
-    Hive.openBox<dynamic>('settings'),
-    Hive.openBox<dynamic>('study_cache'),
-    Hive.openBox<dynamic>('user_cache'),
-  ]);
+Future<SharedPreferences> _initSharedPrefs() async {
+  try {
+    return await SharedPreferences.getInstance();
+  } catch (e) {
+    debugPrint('[SharedPrefs] Init failed, using in-memory fallback: $e');
+    SharedPreferences.setMockInitialValues({});
+    return SharedPreferences.getInstance();
+  }
 }

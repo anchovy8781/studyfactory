@@ -121,7 +121,7 @@
         <!-- Google ML Kit: face detection model -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
-            android:value="face,pose" />
+            android:value="face" />
 
         <!-- FileProvider for sharing captured images -->
         <provider

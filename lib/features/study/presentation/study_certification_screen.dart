@@ -1,15 +1,19 @@
 import 'dart:async';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/core/services/face_detection_service.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
 import 'package:studyverse/shared/widgets/study_character.dart';
 
-// ── AI Analysis item ──────────────────────────────────────────────────────
+// ── Analysis state model ──────────────────────────────────────────────────────
 
 enum _AnalysisStatus { ok, warning, error }
 
@@ -24,7 +28,7 @@ class _AnalysisItem {
   final String detail;
 }
 
-// ── Riverpod state ────────────────────────────────────────────────────────
+// ── Riverpod state ────────────────────────────────────────────────────────────
 
 class _CertificationState {
   const _CertificationState({
@@ -32,24 +36,32 @@ class _CertificationState {
     required this.focusScore,
     required this.items,
     required this.isPaused,
+    this.faceResult,
+    this.lastScanAt,
   });
 
   final Duration elapsed;
   final double focusScore;
   final List<_AnalysisItem> items;
   final bool isPaused;
+  final FaceDetectionResult? faceResult;
+  final DateTime? lastScanAt;
 
   _CertificationState copyWith({
     Duration? elapsed,
     double? focusScore,
     List<_AnalysisItem>? items,
     bool? isPaused,
+    FaceDetectionResult? faceResult,
+    DateTime? lastScanAt,
   }) =>
       _CertificationState(
         elapsed: elapsed ?? this.elapsed,
         focusScore: focusScore ?? this.focusScore,
         items: items ?? this.items,
         isPaused: isPaused ?? this.isPaused,
+        faceResult: faceResult ?? this.faceResult,
+        lastScanAt: lastScanAt ?? this.lastScanAt,
       );
 }
 
@@ -60,53 +72,77 @@ class _CertificationNotifier extends StateNotifier<_CertificationState> {
             elapsed: Duration.zero,
             focusScore: 95.0,
             isPaused: false,
-            items: _defaultItems,
+            items: _waitingItems,
           ),
         ) {
-    _start();
+    _startTimer();
   }
 
   Timer? _timer;
   int _tick = 0;
 
-  static const _defaultItems = [
-    _AnalysisItem(label: '얼굴 인식', status: _AnalysisStatus.ok, detail: '정상'),
-    _AnalysisItem(label: '시선 추적', status: _AnalysisStatus.ok, detail: '정상'),
+  static const _waitingItems = [
+    _AnalysisItem(label: '얼굴 인식', status: _AnalysisStatus.warning, detail: '대기 중'),
+    _AnalysisItem(label: '시선 추적', status: _AnalysisStatus.warning, detail: '대기 중'),
     _AnalysisItem(label: '자리 이탈', status: _AnalysisStatus.ok, detail: '없음'),
     _AnalysisItem(label: '휴대폰 사용', status: _AnalysisStatus.ok, detail: '없음'),
-    _AnalysisItem(label: '졸음 감지', status: _AnalysisStatus.warning, detail: '약함 감지'),
+    _AnalysisItem(label: '졸음 감지', status: _AnalysisStatus.ok, detail: '없음'),
   ];
 
-  void _start() {
+  void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (state.isPaused) return;
       _tick++;
-
-      // Simulate dynamic AI analysis changes
-      final items = List<_AnalysisItem>.from(_defaultItems);
-
-      // Occasionally update focus score
-      final scoreDelta = (_tick % 10 == 0) ? ((_tick ~/ 10).isOdd ? -2.0 : 1.5) : 0.0;
-      final newScore = (state.focusScore + scoreDelta).clamp(60.0, 100.0);
-
-      // Simulate drowsiness resolved after 30 seconds
-      if (_tick > 30) {
-        items[4] = const _AnalysisItem(
-          label: '졸음 감지',
-          status: _AnalysisStatus.ok,
-          detail: '없음',
-        );
-      }
-
       state = state.copyWith(
         elapsed: state.elapsed + const Duration(seconds: 1),
-        focusScore: newScore,
-        items: items,
       );
     });
   }
 
   void togglePause() => state = state.copyWith(isPaused: !state.isPaused);
+
+  void updateFromFaceResult(FaceDetectionResult result) {
+    final newItems = _itemsFromResult(result);
+    // Weighted blend: 30% old score, 70% new face score
+    final blended =
+        (state.focusScore * 0.3 + result.focusScore * 0.7).clamp(0.0, 100.0);
+
+    state = state.copyWith(
+      faceResult: result,
+      lastScanAt: DateTime.now(),
+      items: newItems,
+      focusScore: blended,
+    );
+  }
+
+  static List<_AnalysisItem> _itemsFromResult(FaceDetectionResult result) {
+    if (!result.faceDetected) {
+      return const [
+        _AnalysisItem(label: '얼굴 인식', status: _AnalysisStatus.error, detail: '감지 안됨'),
+        _AnalysisItem(label: '시선 추적', status: _AnalysisStatus.error, detail: '불가'),
+        _AnalysisItem(label: '자리 이탈', status: _AnalysisStatus.warning, detail: '확인 필요'),
+        _AnalysisItem(label: '휴대폰 사용', status: _AnalysisStatus.ok, detail: '없음'),
+        _AnalysisItem(label: '졸음 감지', status: _AnalysisStatus.ok, detail: '없음'),
+      ];
+    }
+    return [
+      const _AnalysisItem(label: '얼굴 인식', status: _AnalysisStatus.ok, detail: '정상'),
+      _AnalysisItem(
+        label: '시선 추적',
+        status: result.lookingAtCamera == true
+            ? _AnalysisStatus.ok
+            : _AnalysisStatus.warning,
+        detail: result.lookingAtCamera == true ? '화면 응시' : '시선 이탈',
+      ),
+      const _AnalysisItem(label: '자리 이탈', status: _AnalysisStatus.ok, detail: '없음'),
+      const _AnalysisItem(label: '휴대폰 사용', status: _AnalysisStatus.ok, detail: '없음'),
+      _AnalysisItem(
+        label: '졸음 감지',
+        status: result.drowsy == true ? _AnalysisStatus.warning : _AnalysisStatus.ok,
+        detail: result.drowsy == true ? '졸음 감지' : '없음',
+      ),
+    ];
+  }
 
   @override
   void dispose() {
@@ -120,13 +156,115 @@ final _certificationProvider =
   (ref) => _CertificationNotifier(),
 );
 
-// ── Screen ────────────────────────────────────────────────────────────────
+// ── Screen ────────────────────────────────────────────────────────────────────
 
-class StudyCertificationScreen extends ConsumerWidget {
+class StudyCertificationScreen extends ConsumerStatefulWidget {
   const StudyCertificationScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudyCertificationScreen> createState() =>
+      _StudyCertificationScreenState();
+}
+
+class _StudyCertificationScreenState
+    extends ConsumerState<StudyCertificationScreen>
+    with WidgetsBindingObserver {
+  CameraController? _controller;
+  bool _cameraReady = false;
+  bool _permissionDenied = false;
+  bool _isScanning = false;
+  Timer? _autoScanTimer;
+  final FaceDetectionService _faceService = FaceDetectionService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initCamera();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final ctrl = _controller;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    if (state == AppLifecycleState.inactive) {
+      _autoScanTimer?.cancel();
+      ctrl.dispose();
+      if (mounted) setState(() { _controller = null; _cameraReady = false; });
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
+
+  Future<void> _initCamera() async {
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      if (mounted) setState(() => _permissionDenied = true);
+      return;
+    }
+
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) return;
+
+      final front = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.front,
+        orElse: () => cameras.first,
+      );
+      final ctrl = CameraController(
+        front,
+        ResolutionPreset.medium,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+      await ctrl.initialize();
+      if (!mounted) { ctrl.dispose(); return; }
+
+      setState(() {
+        _controller = ctrl;
+        _cameraReady = true;
+      });
+
+      // Initial scan after 2 seconds
+      Future.delayed(const Duration(seconds: 2), _doScan);
+      // Auto-scan every 60 seconds
+      _autoScanTimer = Timer.periodic(const Duration(seconds: 60), (_) => _doScan());
+    } catch (e) {
+      debugPrint('[Camera] init error: $e');
+    }
+  }
+
+  Future<void> _doScan() async {
+    if (_isScanning || !_cameraReady || _controller == null) return;
+    if (ref.read(_certificationProvider).isPaused) return;
+
+    setState(() => _isScanning = true);
+    try {
+      final xFile = await _controller!.takePicture();
+      final result = await _faceService.analyzeFromFile(xFile.path);
+      if (result != null && mounted) {
+        ref.read(_certificationProvider.notifier).updateFromFaceResult(result);
+      }
+    } catch (e) {
+      debugPrint('[Scan] $e');
+    } finally {
+      if (mounted) setState(() => _isScanning = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _autoScanTimer?.cancel();
+    _controller?.dispose();
+    _faceService.dispose();
+    super.dispose();
+  }
+
+  // ── Build ───────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(_certificationProvider);
 
     return Scaffold(
@@ -142,17 +280,17 @@ class StudyCertificationScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildTopBar(context, state, ref),
+              _buildTopBar(context, state),
               const SizedBox(height: AppSizes.spaceLg),
               _buildTimerSection(state),
               const SizedBox(height: AppSizes.spaceLg),
-              _buildCameraPreview(),
+              _buildCameraSection(state),
               const SizedBox(height: AppSizes.spaceLg),
               _buildFocusScore(state),
               const SizedBox(height: AppSizes.spaceLg),
               _buildAnalysisList(state),
               const SizedBox(height: AppSizes.space2xl),
-              _buildControlButtons(context, state, ref),
+              _buildControlButtons(context, state),
             ],
           ),
         ),
@@ -160,39 +298,41 @@ class StudyCertificationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTopBar(BuildContext context, _CertificationState state, WidgetRef ref) {
+  // ── Top bar ─────────────────────────────────────────────────────────────────
+
+  Widget _buildTopBar(BuildContext context, _CertificationState state) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceLg),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
-            onPressed: () => _showStopDialog(context, ref),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: AppColors.textPrimary),
+            onPressed: () => _showStopDialog(context),
           ),
           const Spacer(),
           Column(
             children: [
-              Text(
-                '공부 인증 진행 중',
-                style: AppTextStyles.titleMedium,
-              ),
+              Text('공부 인증 진행 중', style: AppTextStyles.titleMedium),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Color(0xFF4CAF50),
+                      color: _cameraReady ? AppColors.success : AppColors.warning,
                     ),
                   )
                       .animate(onPlay: (c) => c.repeat(reverse: true))
                       .fade(begin: 0.3, end: 1.0, duration: 800.ms),
                   const SizedBox(width: 6),
                   Text(
-                    'AI 분석 중',
-                    style: AppTextStyles.caption.copyWith(color: AppColors.success),
+                    _cameraReady ? 'AI 분석 중' : '카메라 초기화 중',
+                    style: AppTextStyles.caption.copyWith(
+                      color: _cameraReady ? AppColors.success : AppColors.warning,
+                    ),
                   ),
                 ],
               ),
@@ -204,12 +344,15 @@ class StudyCertificationScreen extends ConsumerWidget {
               state.isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
               color: AppColors.textPrimary,
             ),
-            onPressed: () => ref.read(_certificationProvider.notifier).togglePause(),
+            onPressed: () =>
+                ref.read(_certificationProvider.notifier).togglePause(),
           ),
         ],
       ),
     );
   }
+
+  // ── Timer ───────────────────────────────────────────────────────────────────
 
   Widget _buildTimerSection(_CertificationState state) {
     final h = state.elapsed.inHours;
@@ -227,7 +370,6 @@ class StudyCertificationScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          // Circular progress with character
           Stack(
             alignment: Alignment.center,
             children: [
@@ -249,7 +391,9 @@ class StudyCertificationScreen extends ConsumerWidget {
                 children: [
                   StudyCharacter(
                     size: AppSizes.characterSm + 10,
-                    mood: state.isPaused ? CharacterMood.sleeping : CharacterMood.studying,
+                    mood: state.isPaused
+                        ? CharacterMood.sleeping
+                        : CharacterMood.studying,
                     animate: !state.isPaused,
                   ),
                   const SizedBox(height: AppSizes.spaceSm),
@@ -257,13 +401,17 @@ class StudyCertificationScreen extends ConsumerWidget {
                     timeStr,
                     style: AppTextStyles.timerDisplay.copyWith(
                       fontSize: 42,
-                      color: state.isPaused ? AppColors.textSecondary : AppColors.textPrimary,
+                      color: state.isPaused
+                          ? AppColors.textSecondary
+                          : AppColors.textPrimary,
                     ),
                   ),
                   Text(
                     state.isPaused ? '일시 정지됨' : '공부 중',
                     style: AppTextStyles.bodySmall.copyWith(
-                      color: state.isPaused ? AppColors.textSecondary : AppColors.success,
+                      color: state.isPaused
+                          ? AppColors.textSecondary
+                          : AppColors.success,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -276,71 +424,178 @@ class StudyCertificationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCameraPreview() {
+  // ── Camera section ──────────────────────────────────────────────────────────
+
+  Widget _buildCameraSection(_CertificationState state) {
     return Container(
-      height: 160,
+      height: 200,
       decoration: BoxDecoration(
-        color: AppColors.timerBackground,
+        color: Colors.black,
         borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         boxShadow: AppColors.cardShadow,
       ),
-      child: Stack(
-        children: [
-          // Simulated camera grid lines
-          CustomPaint(
-            size: const Size(double.infinity, 160),
-            painter: _CameraGridPainter(),
-          ),
-          // Corner brackets
-          ..._buildCameraCorners(),
-          // Center face detection box
-          Center(
-            child: Container(
-              width: 100,
-              height: 120,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: AppColors.success.withOpacity(0.8),
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildCameraContent(),
+            ..._buildCameraCorners(),
+            if (state.faceResult?.faceDetected == true)
+              Center(
+                child: Container(
+                  width: 100,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: AppColors.success.withOpacity(0.8),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  ),
+                )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .custom(
+                      duration: 1500.ms,
+                      builder: (_, v, child) =>
+                          Opacity(opacity: 0.5 + v * 0.5, child: child),
+                    ),
               ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .custom(
-                  duration: 1500.ms,
-                  builder: (_, v, child) => Opacity(opacity: 0.5 + v * 0.5, child: child),
-                ),
-          ),
-          // Camera label
-          Positioned(
-            bottom: 12,
-            left: 0,
-            right: 0,
-            child: Center(
+            _buildScanOverlay(state),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 500.ms, delay: 200.ms);
+  }
+
+  Widget _buildCameraContent() {
+    if (_permissionDenied) {
+      return ColoredBox(
+        color: Colors.black,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.no_photography_rounded,
+                color: Colors.white54, size: 36),
+            const SizedBox(height: 8),
+            Text(
+              '카메라 권한이 필요합니다',
+              style: AppTextStyles.bodySmall.copyWith(color: Colors.white54),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: openAppSettings,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusRound),
+                ),
+                child: Text(
+                  '설정 열기',
+                  style: AppTextStyles.caption.copyWith(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_cameraReady && _controller != null) {
+      return CameraPreview(_controller!);
+    }
+    return const ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: CircularProgressIndicator(
+          color: AppColors.primary,
+          strokeWidth: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScanOverlay(_CertificationState state) {
+    final detected = state.faceResult?.faceDetected;
+    final statusIcon = _isScanning
+        ? null
+        : detected == true
+            ? Icons.check_circle_rounded
+            : detected == false
+                ? Icons.face_retouching_off_rounded
+                : Icons.videocam_rounded;
+    final statusColor = detected == true ? AppColors.success : Colors.white;
+    final statusText = _isScanning
+        ? 'AI 분석 중...'
+        : detected == true
+            ? '얼굴 인식 완료'
+            : detected == false
+                ? '얼굴 감지 실패'
+                : 'AI 카메라 활성화됨';
+
+    return Positioned(
+      bottom: 10,
+      left: 0,
+      right: 0,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(AppSizes.radiusRound),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isScanning)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                else
+                  Icon(statusIcon, color: statusColor, size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  statusText,
+                  style:
+                      AppTextStyles.caption.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+          if (_cameraReady && !_isScanning) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _doScan,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(AppSizes.radiusRound),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.videocam_rounded, color: Colors.white, size: 14),
+                    const Icon(Icons.camera_alt_rounded,
+                        color: Colors.white, size: 14),
                     const SizedBox(width: 4),
                     Text(
-                      'AI 카메라 활성화됨',
+                      '지금 인식',
                       style: AppTextStyles.caption.copyWith(color: Colors.white),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
-    ).animate().fadeIn(duration: 500.ms, delay: 200.ms);
+    );
   }
 
   List<Widget> _buildCameraCorners() {
@@ -349,32 +604,26 @@ class StudyCertificationScreen extends ConsumerWidget {
     const strokeWidth = 3.0;
 
     return [
-      // Top-left
       Positioned(
-        top: 12,
-        left: 12,
+        top: 12, left: 12,
         child: _CornerBracket(color: color, length: length, strokeWidth: strokeWidth, topLeft: true),
       ),
-      // Top-right
       Positioned(
-        top: 12,
-        right: 12,
+        top: 12, right: 12,
         child: _CornerBracket(color: color, length: length, strokeWidth: strokeWidth, topRight: true),
       ),
-      // Bottom-left
       Positioned(
-        bottom: 12,
-        left: 12,
+        bottom: 12, left: 12,
         child: _CornerBracket(color: color, length: length, strokeWidth: strokeWidth, bottomLeft: true),
       ),
-      // Bottom-right
       Positioned(
-        bottom: 12,
-        right: 12,
+        bottom: 12, right: 12,
         child: _CornerBracket(color: color, length: length, strokeWidth: strokeWidth, bottomRight: true),
       ),
     ];
   }
+
+  // ── Focus score ─────────────────────────────────────────────────────────────
 
   Widget _buildFocusScore(_CertificationState state) {
     final score = state.focusScore;
@@ -396,15 +645,16 @@ class StudyCertificationScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.track_changes_rounded, color: AppColors.primary, size: AppSizes.iconLg),
+              const Icon(Icons.track_changes_rounded,
+                  color: AppColors.primary, size: AppSizes.iconLg),
               const SizedBox(width: AppSizes.spaceSm),
-              Text('실시간 집중도', style: AppTextStyles.titleSmall),
+              Text('AI 집중도 분석', style: AppTextStyles.titleSmall),
               const Spacer(),
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: score),
                 duration: const Duration(milliseconds: 800),
                 builder: (_, v, __) => Text(
-                  '${v.toStringAsFixed(0)}%',
+                  '${v.toStringAsFixed(0)}점',
                   style: AppTextStyles.headlineSmall.copyWith(
                     color: color,
                     fontWeight: FontWeight.w800,
@@ -430,17 +680,37 @@ class StudyCertificationScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSizes.spaceSm),
           Text(
-            score >= 80
-                ? '훌륭해요! 집중력이 매우 높습니다 🎉'
-                : score >= 60
-                    ? '집중도가 보통입니다. 조금 더 집중해보세요!'
-                    : '집중도가 낮습니다. 잠시 휴식을 취해보세요.',
-            style: AppTextStyles.bodySmall.copyWith(color: color),
+            state.lastScanAt == null
+                ? '카메라로 얼굴을 인식하면 AI가 집중도를 분석합니다.'
+                : score >= 80
+                    ? '훌륭해요! 집중력이 매우 높습니다 🎉'
+                    : score >= 60
+                        ? '집중도가 보통입니다. 조금 더 집중해보세요!'
+                        : '집중도가 낮습니다. 잠시 휴식을 취해보세요.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: state.lastScanAt == null ? AppColors.textSecondary : color,
+            ),
           ),
+          if (state.lastScanAt != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              '마지막 인식: ${_formatTime(state.lastScanAt!)}',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
         ],
       ),
     );
   }
+
+  String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt).inSeconds;
+    if (diff < 60) return '$diff초 전';
+    return '${diff ~/ 60}분 전';
+  }
+
+  // ── Analysis list ────────────────────────────────────────────────────────────
 
   Widget _buildAnalysisList(_CertificationState state) {
     return Container(
@@ -455,15 +725,29 @@ class StudyCertificationScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.analytics_rounded, color: AppColors.primary, size: AppSizes.iconLg),
+              const Icon(Icons.analytics_rounded,
+                  color: AppColors.primary, size: AppSizes.iconLg),
               const SizedBox(width: AppSizes.spaceSm),
-              Text('AI 분석 결과', style: AppTextStyles.titleSmall),
+              Text('AI 실시간 분석', style: AppTextStyles.titleSmall),
+              const Spacer(),
+              if (state.lastScanAt == null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningLight,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusRound),
+                  ),
+                  child: Text(
+                    '분석 대기 중',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.warning),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: AppSizes.spaceMd),
           const Divider(color: AppColors.divider),
           const SizedBox(height: AppSizes.spaceSm),
-          ...state.items.map((item) => _buildAnalysisRow(item)),
+          ...state.items.map(_buildAnalysisRow),
         ],
       ),
     );
@@ -471,19 +755,26 @@ class StudyCertificationScreen extends ConsumerWidget {
 
   Widget _buildAnalysisRow(_AnalysisItem item) {
     final (icon, color, bg) = switch (item.status) {
-      _AnalysisStatus.ok => (Icons.check_circle_rounded, AppColors.success, AppColors.successLight),
-      _AnalysisStatus.warning => (Icons.warning_rounded, AppColors.warning, AppColors.warningLight),
-      _AnalysisStatus.error => (Icons.error_rounded, AppColors.error, AppColors.errorLight),
+      _AnalysisStatus.ok =>
+        (Icons.check_circle_rounded, AppColors.success, AppColors.successLight),
+      _AnalysisStatus.warning =>
+        (Icons.warning_rounded, AppColors.warning, AppColors.warningLight),
+      _AnalysisStatus.error =>
+        (Icons.error_rounded, AppColors.error, AppColors.errorLight),
     };
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceXs),
       child: Row(
         children: [
-          Text(item.label, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary)),
+          Text(
+            item.label,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+          ),
           const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceSm, vertical: 3),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSizes.spaceSm, vertical: 3),
             decoration: BoxDecoration(
               color: bg,
               borderRadius: BorderRadius.circular(AppSizes.radiusRound),
@@ -495,7 +786,8 @@ class StudyCertificationScreen extends ConsumerWidget {
                 const SizedBox(width: 4),
                 Text(
                   item.detail,
-                  style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w700),
+                  style: AppTextStyles.caption
+                      .copyWith(color: color, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -505,13 +797,17 @@ class StudyCertificationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildControlButtons(BuildContext context, _CertificationState state, WidgetRef ref) {
+  // ── Control buttons ──────────────────────────────────────────────────────────
+
+  Widget _buildControlButtons(BuildContext context, _CertificationState state) {
     return Column(
       children: [
         AppButton(
           label: state.isPaused ? '공부 재개' : '일시 정지',
-          variant: state.isPaused ? AppButtonVariant.primary : AppButtonVariant.outline,
-          onPressed: () => ref.read(_certificationProvider.notifier).togglePause(),
+          variant:
+              state.isPaused ? AppButtonVariant.primary : AppButtonVariant.outline,
+          onPressed: () =>
+              ref.read(_certificationProvider.notifier).togglePause(),
           icon: state.isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
           size: AppButtonSize.large,
         ),
@@ -519,7 +815,7 @@ class StudyCertificationScreen extends ConsumerWidget {
         AppButton(
           label: '공부 종료',
           variant: AppButtonVariant.danger,
-          onPressed: () => _showStopDialog(context, ref),
+          onPressed: () => _showStopDialog(context),
           icon: Icons.stop_rounded,
           size: AppButtonSize.large,
         ),
@@ -527,7 +823,7 @@ class StudyCertificationScreen extends ConsumerWidget {
     );
   }
 
-  void _showStopDialog(BuildContext context, WidgetRef ref) {
+  void _showStopDialog(BuildContext context) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -552,7 +848,8 @@ class StudyCertificationScreen extends ConsumerWidget {
               Navigator.of(ctx).pop();
               context.go('/home');
             },
-            child: const Text('종료하기', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('종료하기', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -560,31 +857,7 @@ class StudyCertificationScreen extends ConsumerWidget {
   }
 }
 
-// ── Custom painters ────────────────────────────────────────────────────────
-
-class _CameraGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
-      ..strokeWidth = 0.5;
-
-    final cols = 8;
-    final rows = 5;
-
-    for (int i = 1; i < cols; i++) {
-      final x = size.width * i / cols;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (int j = 1; j < rows; j++) {
-      final y = size.height * j / rows;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_CameraGridPainter old) => false;
-}
+// ── Corner bracket widget ────────────────────────────────────────────────────
 
 class _CornerBracket extends StatelessWidget {
   const _CornerBracket({

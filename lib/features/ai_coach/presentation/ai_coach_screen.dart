@@ -1,9 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/core/services/claude_ai_service.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
+
+// ── Chat message model ────────────────────────────────────────────────────────
+
+class _ChatMessage {
+  const _ChatMessage({required this.isUser, required this.text});
+  final bool isUser;
+  final String text;
+}
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 
 class AiCoachScreen extends ConsumerStatefulWidget {
   const AiCoachScreen({super.key});
@@ -13,32 +25,100 @@ class AiCoachScreen extends ConsumerStatefulWidget {
 }
 
 class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
-  final List<_Suggestion> _suggestions = const [
-    _Suggestion(
-      icon: Icons.warning_amber_rounded,
-      color: Color(0xFFFF6B35),
-      text: '회로이론 복습이 필요해요.',
-      priority: '높음',
-    ),
-    _Suggestion(
-      icon: Icons.info_outline_rounded,
-      color: Color(0xFF1A73E8),
-      text: '25분 뒤 짧은 휴식을 추천해요.',
-      priority: '보통',
-    ),
-    _Suggestion(
-      icon: Icons.lightbulb_outline_rounded,
-      color: Color(0xFFFFB300),
-      text: '오늘 전기기사 문제 10개를 더 풀어보세요.',
-      priority: '보통',
-    ),
-    _Suggestion(
-      icon: Icons.trending_up_rounded,
-      color: Color(0xFF4CAF50),
-      text: '이번 주 집중도가 지난 주보다 12% 올랐어요!',
-      priority: '낮음',
-    ),
-  ];
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+  static const _apiKeyStorageKey = 'claude_api_key';
+
+  final ClaudeAiService _aiService = ClaudeAiService();
+  final TextEditingController _inputCtrl = TextEditingController();
+  final ScrollController _scrollCtrl = ScrollController();
+
+  String? _apiKey;
+  bool _isLoading = false;
+  final List<_ChatMessage> _messages = [];
+
+  // Mock study data (will be replaced with real Riverpod providers)
+  static const _todayMinutes = 95;
+  static const _weekMinutes = 420;
+  static const double _focusScore = 87.0;
+  static const _topSubject = '전기기사';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadApiKey();
+  }
+
+  @override
+  void dispose() {
+    _inputCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadApiKey() async {
+    try {
+      final key = await _storage.read(key: _apiKeyStorageKey);
+      if (mounted) setState(() => _apiKey = key);
+    } catch (e) {
+      debugPrint('[AiCoach] storage read: $e');
+    }
+  }
+
+  Future<void> _saveApiKey(String key) async {
+    await _storage.write(key: _apiKeyStorageKey, value: key);
+    if (mounted) setState(() => _apiKey = key.trim());
+  }
+
+  Future<void> _sendMessage(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty || _isLoading || _apiKey == null) return;
+
+    _inputCtrl.clear();
+    setState(() {
+      _messages.add(_ChatMessage(isUser: true, text: trimmed));
+      _isLoading = true;
+    });
+    _scrollToBottom();
+
+    try {
+      final reply = await _aiService.ask(
+        apiKey: _apiKey!,
+        question: trimmed,
+        todayMinutes: _todayMinutes,
+        weekMinutes: _weekMinutes,
+        focusScore: _focusScore,
+        topSubject: _topSubject,
+      );
+      if (mounted) {
+        setState(() => _messages.add(_ChatMessage(isUser: false, text: reply)));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _messages.add(
+              _ChatMessage(isUser: false, text: e.toString().replaceAll('Exception: ', '')),
+            ));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+      _scrollToBottom();
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -51,31 +131,48 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
         title: Text('AI 공부 코치', style: AppTextStyles.titleLarge),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search_rounded, color: AppColors.textPrimary),
-            onPressed: () {},
+            icon: Icon(
+              _apiKey != null && _apiKey!.isNotEmpty
+                  ? Icons.key_rounded
+                  : Icons.key_off_rounded,
+              color: _apiKey != null && _apiKey!.isNotEmpty
+                  ? AppColors.success
+                  : AppColors.warning,
+            ),
+            onPressed: _showApiKeyDialog,
+            tooltip: 'Claude API 키 설정',
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildGreetingCard(),
-            const SizedBox(height: 16),
-            _buildAnalysisCard(),
-            const SizedBox(height: 16),
-            _buildWeeklyGoalCard(),
-            const SizedBox(height: 16),
-            _buildSuggestionsSection(),
-            const SizedBox(height: 24),
-          ],
-        ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollCtrl,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildGreetingCard(),
+                  const SizedBox(height: 16),
+                  _buildAnalysisCard(),
+                  const SizedBox(height: 16),
+                  _buildWeeklyGoalCard(),
+                  const SizedBox(height: 16),
+                  _buildChatSection(),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+          _buildInputBar(),
+        ],
       ),
     );
   }
 
-  // ── Greeting card ────────────────────────────────────────────────────────
+  // ── Greeting card ─────────────────────────────────────────────────────────
+
   Widget _buildGreetingCard() {
     return Container(
       width: double.infinity,
@@ -99,21 +196,26 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                     style: AppTextStyles.titleMedium.copyWith(
                         color: Colors.white, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
-                Text('김스터디님, 오늘도 열심히\n공부하고 있네요 🎉',
-                    style: AppTextStyles.bodyMedium.copyWith(color: Colors.white70)),
+                Text('오늘도 열심히 공부하고 있네요 🎉',
+                    style:
+                        AppTextStyles.bodyMedium.copyWith(color: Colors.white70)),
                 const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '계획 보기',
-                      style: AppTextStyles.labelLarge.copyWith(
-                          color: AppColors.primary, fontWeight: FontWeight.w700),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _apiKey != null && _apiKey!.isNotEmpty
+                        ? 'AI 코치 연결됨 ✓'
+                        : 'API 키 설정 필요',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      color: _apiKey != null && _apiKey!.isNotEmpty
+                          ? AppColors.success
+                          : AppColors.warning,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -121,7 +223,6 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // Dog mascot circle
           Container(
             width: 80,
             height: 80,
@@ -139,7 +240,8 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
     ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1);
   }
 
-  // ── Analysis card ────────────────────────────────────────────────────────
+  // ── Analysis card ──────────────────────────────────────────────────────────
+
   Widget _buildAnalysisCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -153,18 +255,19 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.analytics_rounded, color: AppColors.primary, size: 20),
+              const Icon(Icons.analytics_rounded,
+                  color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
               Text('오늘의 분석',
-                  style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.w700)),
+                  style: AppTextStyles.titleSmall
+                      .copyWith(fontWeight: FontWeight.w700)),
             ],
           ),
           const SizedBox(height: 16),
-          // Focus score
           _buildAnalysisMetric(
             label: '집중도',
-            value: '87점',
-            progress: 0.87,
+            value: '${_focusScore.toInt()}점',
+            progress: _focusScore / 100,
             color: AppColors.primary,
           ),
           const SizedBox(height: 14),
@@ -174,32 +277,14 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
             icon: Icons.star_rounded,
             iconColor: AppColors.warning,
             label: '가장 많이 공부한 과목',
-            value: '전기기사',
+            value: _topSubject,
           ),
           const SizedBox(height: 10),
           _buildInfoRow(
-            icon: Icons.psychology_alt_rounded,
-            iconColor: AppColors.error,
-            label: '취약 과목',
-            value: '회로이론',
-          ),
-          const SizedBox(height: 14),
-          const Divider(color: AppColors.divider),
-          const SizedBox(height: 14),
-          Text('AI 추천',
-              style: AppTextStyles.labelLarge.copyWith(
-                  color: AppColors.primary, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          _buildRecommendRow(
-            icon: Icons.warning_amber_rounded,
-            iconColor: const Color(0xFFFF6B35),
-            text: '회로이론 복습이 필요해요.',
-          ),
-          const SizedBox(height: 8),
-          _buildRecommendRow(
-            icon: Icons.info_outline_rounded,
+            icon: Icons.timer_rounded,
             iconColor: AppColors.primary,
-            text: '25분 뒤 짧은 휴식을 추천해요.',
+            label: '오늘 공부 시간',
+            value: '${_todayMinutes ~/ 60}시간 ${_todayMinutes % 60}분',
           ),
         ],
       ),
@@ -218,10 +303,12 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+            Text(label,
+                style: AppTextStyles.bodyMedium
+                    .copyWith(color: AppColors.textSecondary)),
             Text(value,
-                style: AppTextStyles.titleSmall.copyWith(
-                    color: color, fontWeight: FontWeight.w700)),
+                style: AppTextStyles.titleSmall
+                    .copyWith(color: color, fontWeight: FontWeight.w700)),
           ],
         ),
         const SizedBox(height: 8),
@@ -249,7 +336,8 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
         Icon(icon, color: iconColor, size: 18),
         const SizedBox(width: 8),
         Text(label,
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+            style:
+                AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
         const Spacer(),
         Text(value,
             style: AppTextStyles.bodyMedium.copyWith(
@@ -258,35 +346,11 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
     );
   }
 
-  Widget _buildRecommendRow({
-    required IconData icon,
-    required Color iconColor,
-    required String text,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: iconColor, size: 16),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(text,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary)),
-        ),
-      ],
-    );
-  }
+  // ── Weekly goal card ───────────────────────────────────────────────────────
 
-  // ── Weekly goal card ─────────────────────────────────────────────────────
   Widget _buildWeeklyGoalCard() {
     const goalHours = 30.0;
-    const doneHours = 25.0;
+    const doneHours = _weekMinutes / 60;
     final progress = doneHours / goalHours;
 
     return Container(
@@ -304,12 +368,14 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
               const Icon(Icons.flag_rounded, color: AppColors.accent, size: 20),
               const SizedBox(width: 8),
               Text('이번 주 목표',
-                  style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.w700)),
+                  style: AppTextStyles.titleSmall
+                      .copyWith(fontWeight: FontWeight.w700)),
             ],
           ),
           const SizedBox(height: 4),
           Text('주간 순공 시간 목표',
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+              style:
+                  AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
           const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -321,7 +387,8 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text('/ ${goalHours.toInt()}시간',
-                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: AppColors.textSecondary)),
               ),
             ],
           ),
@@ -329,9 +396,10 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
-              value: progress,
+              value: progress.clamp(0.0, 1.0),
               backgroundColor: AppColors.surfaceVariant,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
               minHeight: 14,
             ),
           ),
@@ -340,9 +408,14 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('${(progress * 100).toInt()}% 달성',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
-              Text('목표까지 5시간 남았어요',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                  style:
+                      AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
+              Text(
+                  progress >= 1
+                      ? '목표 달성! 🎉'
+                      : '목표까지 ${(goalHours - doneHours).toInt()}시간 남았어요',
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.textSecondary)),
             ],
           ),
         ],
@@ -350,85 +423,332 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
     ).animate().fadeIn(duration: 400.ms, delay: 200.ms);
   }
 
-  // ── Suggestions section ──────────────────────────────────────────────────
-  Widget _buildSuggestionsSection() {
+  // ── Chat section ───────────────────────────────────────────────────────────
+
+  Widget _buildChatSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('AI 맞춤 제안',
-            style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.w700)),
+        Row(
+          children: [
+            const Icon(Icons.chat_bubble_rounded,
+                color: AppColors.primary, size: 20),
+            const SizedBox(width: 8),
+            Text('AI 코치에게 질문하기',
+                style: AppTextStyles.titleSmall
+                    .copyWith(fontWeight: FontWeight.w700)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _apiKey != null && _apiKey!.isNotEmpty
+              ? 'Claude AI가 공부 데이터를 분석해 실시간으로 답변합니다.'
+              : '우상단 키 아이콘을 눌러 Anthropic API 키를 입력하세요.',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: _apiKey != null && _apiKey!.isNotEmpty
+                ? AppColors.textSecondary
+                : AppColors.warning,
+          ),
+        ),
         const SizedBox(height: 12),
-        ...List.generate(_suggestions.length, (i) {
-          final s = _suggestions[i];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: AppColors.cardShadow,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: s.color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(s.icon, color: s.color, size: 20),
+
+        // Quick question chips
+        if (_apiKey != null && _apiKey!.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildQuickChip('오늘 공부 어떻게 됐어?'),
+              _buildQuickChip('집중력 높이는 방법'),
+              _buildQuickChip('다음에 뭘 공부할까?'),
+              _buildQuickChip('휴식 언제 취할까?'),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Chat messages
+        if (_messages.isEmpty && (_apiKey == null || _apiKey!.isEmpty))
+          _buildApiKeyPrompt()
+        else if (_messages.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.smart_toy_rounded,
+                    color: AppColors.primary, size: 40),
+                const SizedBox(height: 12),
+                Text(
+                  '안녕하세요! 공부에 대해 무엇이든 물어보세요 😊\n데이터를 분석해 맞춤형 조언을 드릴게요.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          )
+        else
+          ..._messages.asMap().entries.map((e) {
+            final i = e.key;
+            final msg = e.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _buildChatBubble(msg).animate()
+                .slideY(begin: 0.2, duration: 250.ms, delay: (i * 30).ms)
+                .fadeIn(),
+            );
+          }),
+
+        if (_isLoading)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: AppColors.cardShadow,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(s.text,
-                        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('AI 분석 중...',
+                          style: AppTextStyles.bodySmall
+                              .copyWith(color: AppColors.textSecondary)),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _priorityColor(s.priority).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      s.priority,
-                      style: AppTextStyles.labelSmall.copyWith(
-                          color: _priorityColor(s.priority), fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().slideX(begin: 0.1, duration: 300.ms, delay: (i * 60).ms).fadeIn(),
-          );
-        }),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
 
-  Color _priorityColor(String priority) {
-    switch (priority) {
-      case '높음':
-        return AppColors.error;
-      case '보통':
-        return AppColors.primary;
-      default:
-        return AppColors.success;
-    }
+  Widget _buildQuickChip(String label) {
+    return GestureDetector(
+      onTap: () => _sendMessage(label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.primaryContainer,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+        ),
+        child: Text(
+          label,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
   }
-}
 
-class _Suggestion {
-  final IconData icon;
-  final Color color;
-  final String text;
-  final String priority;
+  Widget _buildChatBubble(_ChatMessage msg) {
+    final isUser = msg.isUser;
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.78,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isUser ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isUser ? 16 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 16),
+          ),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Text(
+          msg.text,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: isUser ? Colors.white : AppColors.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
 
-  const _Suggestion({
-    required this.icon,
-    required this.color,
-    required this.text,
-    required this.priority,
-  });
+  Widget _buildApiKeyPrompt() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.warningLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.warning.withOpacity(0.4)),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.key_rounded, color: AppColors.warning, size: 36),
+          const SizedBox(height: 10),
+          Text(
+            'Claude API 키가 필요합니다',
+            style: AppTextStyles.titleSmall
+                .copyWith(color: AppColors.warning, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Anthropic Console에서 API 키를 발급받아\n우상단 키 아이콘을 눌러 입력해주세요.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning),
+          ),
+          const SizedBox(height: 14),
+          AppButton(
+            label: 'API 키 입력',
+            onPressed: _showApiKeyDialog,
+            icon: Icons.key_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Input bar ───────────────────────────────────────────────────────────────
+
+  Widget _buildInputBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.divider)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _inputCtrl,
+              enabled: _apiKey != null && _apiKey!.isNotEmpty && !_isLoading,
+              maxLines: 1,
+              textInputAction: TextInputAction.send,
+              onSubmitted: _sendMessage,
+              decoration: InputDecoration(
+                hintText: _apiKey != null && _apiKey!.isNotEmpty
+                    ? '공부에 대해 질문해보세요...'
+                    : 'API 키를 먼저 설정해주세요',
+                hintStyle: AppTextStyles.bodyMedium
+                    .copyWith(color: AppColors.textSecondary),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(color: AppColors.divider),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(color: AppColors.divider),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 1.5),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                isDense: true,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _apiKey != null && _apiKey!.isNotEmpty && !_isLoading
+                ? () => _sendMessage(_inputCtrl.text)
+                : null,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _apiKey != null && _apiKey!.isNotEmpty && !_isLoading
+                    ? AppColors.primary
+                    : AppColors.divider,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── API key dialog ───────────────────────────────────────────────────────────
+
+  void _showApiKeyDialog() {
+    final ctrl = TextEditingController(text: _apiKey ?? '');
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Claude API 키 설정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Anthropic Console (console.anthropic.com)에서\nAPI 키를 발급받아 입력하세요.',
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              obscureText: true,
+              decoration: InputDecoration(
+                hintText: 'sk-ant-...',
+                hintStyle: AppTextStyles.bodySmall
+                    .copyWith(color: AppColors.textSecondary),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: const Icon(Icons.key_rounded),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('취소'),
+          ),
+          if (_apiKey != null && _apiKey!.isNotEmpty)
+            TextButton(
+              onPressed: () async {
+                await _storage.delete(key: _apiKeyStorageKey);
+                if (mounted) setState(() => _apiKey = null);
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+              child: Text('삭제', style: TextStyle(color: AppColors.error)),
+            ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              await _saveApiKey(ctrl.text);
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            },
+            child: const Text('저장', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 }
