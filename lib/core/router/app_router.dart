@@ -18,7 +18,6 @@ import 'package:studyverse/features/ai_tools/presentation/ai_ocr_screen.dart';
 import 'package:studyverse/features/ai_tools/presentation/ai_mentor_screen.dart';
 import 'package:studyverse/features/ai_tools/presentation/pomodoro_screen.dart';
 import 'package:studyverse/features/ai_tools/presentation/forgetting_curve_screen.dart';
-import 'package:studyverse/features/ai_tools/presentation/study_efficiency_screen.dart';
 
 // Real screen imports
 import 'package:studyverse/features/splash/presentation/splash_screen.dart';
@@ -404,11 +403,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'forgetting-curve',
             pageBuilder: (context, state) =>
                 _slidePage(state, const ForgettingCurveScreen()),
-          ),
-          GoRoute(
-            path: 'efficiency',
-            pageBuilder: (context, state) =>
-                _slidePage(state, const StudyEfficiencyScreen()),
           ),
         ],
       ),

@@ -44,10 +44,12 @@ class ClaudeAiService {
               ],
             },
           ],
-          // Generous cap: gemini-flash uses some output budget for reasoning.
+          // Disable reasoning so the full answer fits the output budget
+          // (otherwise gemini-flash spends tokens on thinking and truncates).
           'generationConfig': {
-            'maxOutputTokens': maxTokens.clamp(1024, 8192),
+            'maxOutputTokens': maxTokens.clamp(2048, 8192),
             'temperature': 0.7,
+            'thinkingConfig': {'thinkingBudget': 0},
           },
         },
       );
@@ -105,13 +107,15 @@ class ClaudeAiService {
     required String examDate,
     required int dailyHours,
     required String currentLevel,
+    String detail = '',
   }) {
     return _send(
       apiKey: apiKey,
       system: '당신은 학습 계획 전문가입니다. 시험까지 일별 학습 일정을 구체적으로 작성하세요. '
           '주간 계획, 일별 목표, 주요 단원 순서를 포함. 마크다운 형식으로 답하세요.',
-      user: '과목: $subject\n시험일: $examDate\n하루 공부 가능 시간: ${dailyHours}시간\n현재 수준: $currentLevel\n\n위 정보를 바탕으로 상세한 학습 계획을 세워주세요.',
-      maxTokens: 1000,
+      user: '과목: $subject\n시험일: $examDate\n하루 공부 가능 시간: ${dailyHours}시간\n현재 수준: $currentLevel'
+          '${detail.trim().isEmpty ? '' : '\n추가 요청사항: ${detail.trim()}'}\n\n위 정보를 바탕으로 상세한 학습 계획을 세워주세요.',
+      maxTokens: 2048,
     );
   }
 
@@ -120,12 +124,14 @@ class ClaudeAiService {
     required String apiKey,
     required String topic,
     required int count,
+    String detail = '',
   }) {
     return _send(
       apiKey: apiKey,
       system: '학습용 플래시카드를 생성하는 전문가입니다. 각 카드를 "Q: [질문]\nA: [답변]" 형식으로 작성하세요. 번호를 매겨주세요.',
-      user: '$topic 주제로 핵심 개념 ${count}개의 플래시카드를 만들어주세요.',
-      maxTokens: 1000,
+      user: '$topic 주제로 핵심 개념 ${count}개의 플래시카드를 만들어주세요.'
+          '${detail.trim().isEmpty ? '' : '\n추가 요청사항: ${detail.trim()}'}',
+      maxTokens: 2048,
     );
   }
 
@@ -167,12 +173,14 @@ class ClaudeAiService {
     required double avgFocusScore,
     required String targetGrade,
     required String examDate,
+    String detail = '',
   }) {
     return _send(
       apiKey: apiKey,
       system: '학습 데이터 분석 전문가입니다. 현재 학습량과 집중도를 분석해 예상 등급과 목표 달성을 위한 조언을 제시하세요.',
-      user: '과목: $subject\n총 공부 시간: ${totalStudyHours}시간\n평균 집중도: ${avgFocusScore.toInt()}점\n목표 등급: $targetGrade\n시험일: $examDate\n\n예상 등급을 시뮬레이션하고 목표 달성 가능성을 분석해주세요.',
-      maxTokens: 600,
+      user: '과목: $subject\n총 공부 시간: ${totalStudyHours}시간\n평균 집중도: ${avgFocusScore.toInt()}점\n목표 등급: $targetGrade\n시험일: $examDate'
+          '${detail.trim().isEmpty ? '' : '\n추가 요청사항: ${detail.trim()}'}\n\n예상 등급을 시뮬레이션하고 목표 달성 가능성을 분석해주세요.',
+      maxTokens: 2048,
     );
   }
 

@@ -15,6 +15,7 @@ class _AiFlashcardScreenState extends State<AiFlashcardScreen> {
   static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
   final _aiService = ClaudeAiService();
   final _topicCtrl = TextEditingController();
+  final _detailCtrl = TextEditingController();
   int _count = 10;
   bool _loading = false;
   String? _error;
@@ -23,7 +24,7 @@ class _AiFlashcardScreenState extends State<AiFlashcardScreen> {
   bool _showAnswer = false;
 
   @override
-  void dispose() { _topicCtrl.dispose(); super.dispose(); }
+  void dispose() { _topicCtrl.dispose(); _detailCtrl.dispose(); super.dispose(); }
 
   Future<void> _generate() async {
     if (_topicCtrl.text.isEmpty) return;
@@ -31,7 +32,7 @@ class _AiFlashcardScreenState extends State<AiFlashcardScreen> {
     try {
       final key = await _storage.read(key: 'claude_api_key') ?? '';
       if (key.isEmpty) { setState(() { _error = 'AI Coach 화면에서 API 키를 먼저 설정하세요.'; _loading = false; }); return; }
-      final raw = await _aiService.generateFlashcards(apiKey: key, topic: _topicCtrl.text, count: _count);
+      final raw = await _aiService.generateFlashcards(apiKey: key, topic: _topicCtrl.text, count: _count, detail: _detailCtrl.text);
       setState(() { _cards = _parseCards(raw); });
     } catch (e) {
       setState(() { _error = e.toString(); });
@@ -67,6 +68,8 @@ class _AiFlashcardScreenState extends State<AiFlashcardScreen> {
               decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppSizes.radiusLg), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))]),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 TextField(controller: _topicCtrl, decoration: const InputDecoration(labelText: '주제', hintText: '예) 전기회로 이론', border: OutlineInputBorder())),
+                const SizedBox(height: AppSizes.spaceMd),
+                TextField(controller: _detailCtrl, maxLines: 2, decoration: const InputDecoration(labelText: '세부 요청사항 (선택)', hintText: '예) 계산문제 위주, 초보자용 쉬운 설명', border: OutlineInputBorder())),
                 const SizedBox(height: AppSizes.spaceMd),
                 Row(children: [
                   Text('카드 수: $_count개', style: AppTextStyles.bodyMedium),

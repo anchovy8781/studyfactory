@@ -5,6 +5,7 @@ import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/services/claude_ai_service.dart';
+import 'package:studyverse/core/utils/exam_date.dart';
 
 class AiStudyPlanScreen extends ConsumerStatefulWidget {
   const AiStudyPlanScreen({super.key});
@@ -17,6 +18,7 @@ class _AiStudyPlanScreenState extends ConsumerState<AiStudyPlanScreen> {
   final _aiService = ClaudeAiService();
   final _subjectCtrl = TextEditingController();
   final _examDateCtrl = TextEditingController();
+  final _detailCtrl = TextEditingController();
   int _dailyHours = 3;
   String _level = '중간';
   bool _loading = false;
@@ -27,11 +29,16 @@ class _AiStudyPlanScreenState extends ConsumerState<AiStudyPlanScreen> {
   void dispose() {
     _subjectCtrl.dispose();
     _examDateCtrl.dispose();
+    _detailCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _generate() async {
     if (_subjectCtrl.text.isEmpty || _examDateCtrl.text.isEmpty) return;
+    if (isExamDatePast(_examDateCtrl.text)) {
+      setState(() => _error = '시험 날짜가 과거입니다.');
+      return;
+    }
     setState(() { _loading = true; _error = null; _result = null; });
     try {
       final key = await _storage.read(key: 'claude_api_key') ?? '';
@@ -42,6 +49,7 @@ class _AiStudyPlanScreenState extends ConsumerState<AiStudyPlanScreen> {
         examDate: _examDateCtrl.text,
         dailyHours: _dailyHours,
         currentLevel: _level,
+        detail: _detailCtrl.text,
       );
       setState(() { _result = plan; });
     } catch (e) {
@@ -80,6 +88,8 @@ class _AiStudyPlanScreenState extends ConsumerState<AiStudyPlanScreen> {
               Text('현재 수준', style: AppTextStyles.bodyMedium),
               const SizedBox(height: AppSizes.spaceXs),
               Wrap(spacing: 8, children: ['초급', '중간', '고급'].map((l) => ChoiceChip(label: Text(l), selected: _level == l, onSelected: (_) => setState(() => _level = l))).toList()),
+              const SizedBox(height: AppSizes.spaceMd),
+              TextField(controller: _detailCtrl, maxLines: 2, decoration: const InputDecoration(labelText: '세부 요청사항 (선택)', hintText: '예) 주말은 4시간, 오답노트 중심, 약점은 독해', border: OutlineInputBorder())),
             ]),
             const SizedBox(height: AppSizes.spaceMd),
             ElevatedButton.icon(

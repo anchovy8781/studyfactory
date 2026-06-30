@@ -4,6 +4,7 @@ import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/services/claude_ai_service.dart';
+import 'package:studyverse/core/utils/exam_date.dart';
 
 class GradeSimulationScreen extends StatefulWidget {
   const GradeSimulationScreen({super.key});
@@ -16,6 +17,7 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
   final _aiService = ClaudeAiService();
   final _subjectCtrl = TextEditingController();
   final _examDateCtrl = TextEditingController();
+  final _detailCtrl = TextEditingController();
   int _studyHours = 50;
   double _focusScore = 75;
   String _targetGrade = '1등급';
@@ -24,15 +26,20 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
   String? _error;
 
   @override
-  void dispose() { _subjectCtrl.dispose(); _examDateCtrl.dispose(); super.dispose(); }
+  void dispose() { _subjectCtrl.dispose(); _examDateCtrl.dispose(); _detailCtrl.dispose(); super.dispose(); }
 
   Future<void> _simulate() async {
     if (_subjectCtrl.text.isEmpty) return;
+    // 시험 날짜가 과거인지 검증
+    if (isExamDatePast(_examDateCtrl.text)) {
+      setState(() => _error = '시험 날짜가 과거입니다.');
+      return;
+    }
     setState(() { _loading = true; _error = null; _result = null; });
     try {
       final key = await _storage.read(key: 'claude_api_key') ?? '';
       if (key.isEmpty) { setState(() { _error = 'AI Coach 화면에서 API 키를 먼저 설정하세요.'; _loading = false; }); return; }
-      final result = await _aiService.simulateGrade(apiKey: key, subject: _subjectCtrl.text, totalStudyHours: _studyHours, avgFocusScore: _focusScore, targetGrade: _targetGrade, examDate: _examDateCtrl.text.isEmpty ? '미정' : _examDateCtrl.text);
+      final result = await _aiService.simulateGrade(apiKey: key, subject: _subjectCtrl.text, totalStudyHours: _studyHours, avgFocusScore: _focusScore, targetGrade: _targetGrade, examDate: _examDateCtrl.text.isEmpty ? '미정' : _examDateCtrl.text, detail: _detailCtrl.text);
       setState(() { _result = result; });
     } catch (e) {
       setState(() { _error = e.toString(); });
@@ -55,7 +62,9 @@ class _GradeSimulationScreenState extends State<GradeSimulationScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               TextField(controller: _subjectCtrl, decoration: const InputDecoration(labelText: '과목 / 시험', border: OutlineInputBorder())),
               const SizedBox(height: AppSizes.spaceMd),
-              TextField(controller: _examDateCtrl, decoration: const InputDecoration(labelText: '시험 날짜 (선택)', hintText: '예) 2025년 9월', border: OutlineInputBorder())),
+              TextField(controller: _examDateCtrl, decoration: const InputDecoration(labelText: '시험 날짜 (선택)', hintText: '예) 2026년 9월 15일', border: OutlineInputBorder())),
+              const SizedBox(height: AppSizes.spaceMd),
+              TextField(controller: _detailCtrl, maxLines: 2, decoration: const InputDecoration(labelText: '세부 요청사항 (선택)', hintText: '예) 취약한 문법 위주로, 모의고사 점수 70점', border: OutlineInputBorder())),
               const SizedBox(height: AppSizes.spaceMd),
               Text('누적 공부 시간: ${_studyHours}시간', style: AppTextStyles.bodyMedium),
               Slider(value: _studyHours.toDouble(), min: 10, max: 500, divisions: 49, onChanged: (v) => setState(() => _studyHours = v.round())),
