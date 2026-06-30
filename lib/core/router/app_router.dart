@@ -34,6 +34,8 @@ import 'package:studyverse/features/notifications/presentation/notification_scre
 import 'package:studyverse/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:studyverse/features/support/presentation/support_screen.dart';
 import 'package:studyverse/features/foodcard/presentation/food_card_screen.dart';
+import 'package:studyverse/features/meal/presentation/school_meal_screen.dart';
+import 'package:studyverse/features/events/presentation/events_screen.dart';
 import 'package:studyverse/features/home/presentation/home_screen.dart';
 import 'package:studyverse/features/statistics/presentation/statistics_screen.dart';
 import 'package:studyverse/features/calendar/presentation/calendar_screen.dart';
@@ -221,6 +223,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/foodcard',
         pageBuilder: (context, state) =>
             _slidePage(state, const FoodCardScreen()),
+      ),
+
+      // ── School meal / Events ────────────────────────────────────────────
+      GoRoute(
+        path: '/meal',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const SchoolMealScreen()),
+      ),
+      GoRoute(
+        path: '/events',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const EventsScreen()),
       ),
 
       // ── Main shell (bottom nav) ─────────────────────────────────────────

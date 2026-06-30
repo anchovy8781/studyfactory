@@ -63,6 +63,20 @@ final _menuItems = [
     route: '/rewards/badges',
   ),
   _MenuItem(
+    icon: Icons.celebration_rounded,
+    iconColor: Color(0xFFFF6B35),
+    title: '이벤트',
+    subtitle: '진행 중인 이벤트 보기',
+    route: '/events',
+  ),
+  _MenuItem(
+    icon: Icons.restaurant_rounded,
+    iconColor: Color(0xFF00B894),
+    title: '우리 학교 급식',
+    subtitle: '오늘의 급식 메뉴 조회',
+    route: '/meal',
+  ),
+  _MenuItem(
     icon: Icons.campaign_rounded,
     iconColor: const Color(0xFF9C27B0),
     title: '광고 센터',
