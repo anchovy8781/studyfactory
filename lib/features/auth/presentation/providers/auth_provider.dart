@@ -68,6 +68,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> reloadAndCheckEmailVerified() =>
       _repository.reloadAndCheckEmailVerified();
 
+  /// Delete the account (30-day re-registration block applies).
+  Future<void> withdraw() async {
+    await _repository.withdraw();
+    state = const AuthState.unauthenticated();
+  }
+
   /// Log out and clear local session.
   Future<void> logout() async {
     state = const AuthState.loading();

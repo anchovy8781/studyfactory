@@ -8,9 +8,10 @@ import 'package:studyverse/core/constants/app_text_styles.dart';
 // ---------------------------------------------------------------------------
 // Mock data
 // ---------------------------------------------------------------------------
-const _hourlyData = [0.5, 1.2, 0.8, 2.0, 1.5, 0.3, 1.8, 2.5, 1.0, 0.7, 1.3, 0.6];
+// New accounts start at zero — real study sessions will populate these.
+const _hourlyData = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 const _weekDays = ['월', '화', '수', '목', '금', '토', '일'];
-const _weekHours = [3.5, 5.5, 4.0, 6.0, 5.5, 2.0, 0.0];
+const _weekHours = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
 final _heatmapColors = [
   const Color(0xFFEBF3FF),
@@ -20,10 +21,7 @@ final _heatmapColors = [
   const Color(0xFF1A5FB4),
 ];
 
-int _heatIntensity(int day) {
-  final vals = [0, 2, 4, 3, 1, 4, 2, 3, 0, 1, 4, 3, 2, 0, 1, 3, 4, 2, 1, 0, 3, 2, 4, 1, 3, 2, 0, 4, 1, 2, 3];
-  return vals[day % vals.length];
-}
+int _heatIntensity(int day) => 0;
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -142,7 +140,8 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
 
   // ── Date display ────────────────────────────────────────────────────────
   Widget _buildDateDisplay() {
-    const dateStr = '2024년 5월 20일';
+    final now = DateTime.now();
+    final dateStr = '${now.year}년 ${now.month}월 ${now.day}일';
     return Row(
       children: [
         Text(dateStr,
@@ -188,21 +187,21 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
             ],
           ),
           const SizedBox(height: 8),
-          Text('5시간 30분',
+          Text('0시간 0분',
               style: AppTextStyles.displaySmall.copyWith(
                   color: Colors.white, fontWeight: FontWeight.w800)),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: 5.5 / 8.0,
+              value: 0.0,
               backgroundColor: Colors.white30,
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
               minHeight: 8,
             ),
           ),
           const SizedBox(height: 6),
-          Text('목표까지 2시간 30분 남았어요',
+          Text('목표까지 8시간 남았어요',
               style: AppTextStyles.bodySmall.copyWith(color: Colors.white70)),
         ],
       ),
@@ -313,7 +312,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
             icon: Icons.bolt_rounded,
             iconColor: AppColors.warning,
             label: '집중도',
-            value: '88%',
+            value: '0%',
             sub: '오늘 평균',
           ),
         ),
@@ -323,7 +322,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
             icon: Icons.replay_rounded,
             iconColor: AppColors.success,
             label: '공부 세션',
-            value: '4회',
+            value: '0회',
             sub: '오늘 세션 수',
           ),
         ),
@@ -333,7 +332,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
             icon: Icons.local_fire_department_rounded,
             iconColor: AppColors.accent,
             label: '연속 학습',
-            value: '21일',
+            value: '0일',
             sub: '현재 스트릭',
           ),
         ),
@@ -435,7 +434,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
             children: [
               Text('이번 주 총 공부 시간',
                   style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
-              Text('26.5시간',
+              Text('0시간',
                   style: AppTextStyles.titleSmall.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w700)),
             ],

@@ -336,7 +336,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(height: 1, color: AppColors.divider, indent: 52),
           InkWell(
-            onTap: () => _showWithdrawDialog(context),
+            onTap: () => _showWithdrawDialog(context, ref),
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -385,21 +385,40 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showWithdrawDialog(BuildContext context) {
+  void _showWithdrawDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      barrierDismissible: true, // tap outside to close
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('회원 탈퇴'),
-        content: const Text('계정을 삭제하면 모든 학습 데이터가 영구적으로 삭제됩니다. 정말 탈퇴하시겠어요?'),
+        content: const Text(
+            '계정을 삭제하면 모든 학습 데이터가 영구적으로 삭제됩니다.\n'
+            '탈퇴 후 30일간 같은 기기에서 재가입이 제한됩니다.\n'
+            '정말 탈퇴하시겠어요?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('취소',
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('닫기',
                 style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await ref.read(authProvider.notifier).withdraw();
+                if (context.mounted) context.go('/login');
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString()),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
             child: Text('탈퇴',
                 style: AppTextStyles.labelLarge.copyWith(
                     color: AppColors.error, fontWeight: FontWeight.w700)),

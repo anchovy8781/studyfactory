@@ -32,10 +32,19 @@ class AuthRepository {
   // ── Public API ────────────────────────────────────────────────────────────
 
   static const _deviceRegisteredKey = 'sv_device_registered';
+  static const _withdrawnUntilKey = 'sv_withdrawn_until';
 
   Future<User> register(String email, String password, String nickname) async {
-    // One account per device: block a second sign-up on the same device.
     final prefs = await SharedPreferences.getInstance();
+
+    // Re-registration is blocked for 30 days after a withdrawal.
+    final until = prefs.getInt(_withdrawnUntilKey);
+    if (until != null && DateTime.now().millisecondsSinceEpoch < until) {
+      final d = DateTime.fromMillisecondsSinceEpoch(until);
+      throw '탈퇴 후 30일간 재가입이 제한됩니다. ${d.year}년 ${d.month}월 ${d.day}일 이후 가능합니다.';
+    }
+
+    // One account per device: block a second sign-up on the same device.
     if (prefs.getBool(_deviceRegisteredKey) ?? false) {
       throw '이 기기에서는 이미 계정을 생성했습니다. 로그인해 주세요.';
     }
@@ -176,6 +185,44 @@ class AuthRepository {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Delete the account. Records a 30-day re-registration block on this device,
+  /// removes the Firestore profile, and deletes the Firebase Auth user.
+  Future<void> withdraw() async {
+    final user = _auth.currentUser;
+    if (user == null) throw '로그인 상태가 아닙니다.';
+
+    // Best-effort server record + profile cleanup.
+    try {
+      await _db.collection('withdrawals').doc(user.uid).set({
+        'email': user.email,
+        'withdrawnAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {/* ignore */}
+    try {
+      await _users.doc(user.uid).delete();
+    } catch (_) {/* ignore */}
+
+    // Device-side: allow a new account only after 30 days.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_deviceRegisteredKey);
+    await prefs.setInt(
+      _withdrawnUntilKey,
+      DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch,
+    );
+
+    try {
+      await user.delete();
+    } on fb.FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw '보안을 위해 다시 로그인한 뒤 탈퇴를 진행해 주세요.';
+      }
+      throw _mapError(e);
+    }
+    try {
+      await _google.signOut();
+    } catch (_) {/* ignore */}
   }
 
   Future<void> logout() async {
