@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:studyverse/core/services/face_detection_service.dart';
 import 'package:studyverse/core/services/rewards_service.dart';
 import 'package:studyverse/core/services/notification_service.dart';
@@ -182,6 +183,7 @@ class _StudyCertificationScreenState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WakelockPlus.enable(); // AI 공부 중 화면 꺼짐 방지
     _initCamera();
   }
 
@@ -257,6 +259,7 @@ class _StudyCertificationScreenState
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    WakelockPlus.disable();
     _autoScanTimer?.cancel();
     _controller?.dispose();
     _faceService.dispose();

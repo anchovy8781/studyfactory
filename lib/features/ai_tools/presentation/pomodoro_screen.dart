@@ -5,6 +5,7 @@ import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:flutter/services.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:studyverse/core/services/claude_ai_service.dart';
 import 'package:studyverse/core/services/notification_service.dart';
 
@@ -18,11 +19,11 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
   final _aiService = ClaudeAiService();
 
-  static const _workMinutes = 25;
-  static const _breakMinutes = 5;
+  int _workMinutes = 25;
+  int _breakMinutes = 5;
 
   Timer? _timer;
-  int _secondsLeft = _workMinutes * 60;
+  int _secondsLeft = 25 * 60;
   bool _isRunning = false;
   bool _isBreak = false;
   int _completedPomodoros = 0;
@@ -30,7 +31,17 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   bool _loadingAdvice = false;
 
   @override
-  void dispose() { _timer?.cancel(); super.dispose(); }
+  void initState() {
+    super.initState();
+    WakelockPlus.enable(); // 포모도로 중 화면 꺼짐 방지
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WakelockPlus.disable();
+    super.dispose();
+  }
 
   void _toggle() {
     if (_isRunning) {
@@ -90,6 +101,33 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     }
   }
 
+  Widget _timeSlider(
+      String label, int value, int min, int max, ValueChanged<int> onChanged) {
+    return Row(
+      children: [
+        SizedBox(
+            width: 72,
+            child: Text(label, style: AppTextStyles.bodySmall)),
+        Expanded(
+          child: Slider(
+            value: value.toDouble(),
+            min: min.toDouble(),
+            max: max.toDouble(),
+            divisions: max - min,
+            label: '$value분',
+            onChanged: (v) => onChanged(v.round()),
+          ),
+        ),
+        SizedBox(
+            width: 40,
+            child: Text('$value분',
+                textAlign: TextAlign.end,
+                style: AppTextStyles.labelMedium
+                    .copyWith(fontWeight: FontWeight.w700))),
+      ],
+    );
+  }
+
   String get _timeLabel {
     final m = _secondsLeft ~/ 60;
     final s = _secondsLeft % 60;
@@ -110,6 +148,22 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
         padding: const EdgeInsets.all(AppSizes.spaceLg),
         child: Column(
           children: [
+            // 시간 조정 (실행 중이 아닐 때만)
+            if (!_isRunning) ...[
+              const SizedBox(height: AppSizes.spaceSm),
+              _timeSlider('집중 시간', _workMinutes, 5, 60, (v) {
+                setState(() {
+                  _workMinutes = v;
+                  if (!_isBreak) _secondsLeft = v * 60;
+                });
+              }),
+              _timeSlider('휴식 시간', _breakMinutes, 1, 30, (v) {
+                setState(() {
+                  _breakMinutes = v;
+                  if (_isBreak) _secondsLeft = v * 60;
+                });
+              }),
+            ],
             const Spacer(),
             Text(_isBreak ? '☕ 휴식 시간' : '🎯 집중 시간', style: AppTextStyles.headlineSmall.copyWith(color: color)),
             const SizedBox(height: AppSizes.spaceLg),

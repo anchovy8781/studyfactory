@@ -4,15 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:studyverse/core/services/notification_service.dart';
+import 'package:studyverse/core/theme/theme_mode_provider.dart';
 import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Providers
 // ---------------------------------------------------------------------------
 final _notificationsProvider = StateProvider<bool>((ref) => true);
-final _darkModeProvider = StateProvider<bool>((ref) => false);
-final _studyReminderProvider = StateProvider<bool>((ref) => true);
+final _studyReminderProvider = StateProvider<bool>((ref) => false);
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -23,7 +25,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifications = ref.watch(_notificationsProvider);
-    final darkMode = ref.watch(_darkModeProvider);
+    final darkMode = ref.watch(themeModeProvider) == ThemeMode.dark;
     final studyReminder = ref.watch(_studyReminderProvider);
 
     return Scaffold(
@@ -47,7 +49,10 @@ class SettingsScreen extends ConsumerWidget {
                 title: '알림 설정',
                 subtitle: '앱 알림 허용',
                 value: notifications,
-                onChanged: (v) => ref.read(_notificationsProvider.notifier).state = v,
+                onChanged: (v) {
+                  ref.read(_notificationsProvider.notifier).state = v;
+                  NotificationService.instance.setEnabled(v);
+                },
               ),
               _buildToggleTile(
                 icon: Icons.alarm_rounded,
@@ -97,7 +102,7 @@ class SettingsScreen extends ConsumerWidget {
                 title: '다크 모드',
                 subtitle: '어두운 테마 사용',
                 value: darkMode,
-                onChanged: (v) => ref.read(_darkModeProvider.notifier).state = v,
+                onChanged: (v) => ref.read(themeModeProvider.notifier).setDark(v),
               ),
             ],
           ),
@@ -111,7 +116,8 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.flag_outlined,
                 iconColor: AppColors.success,
                 title: '학습 목표 설정',
-                subtitle: '일/주간 목표 시간 설정',
+                subtitle: '하루 목표 공부 시간 설정',
+                onTap: () => _showGoalDialog(context),
               ),
               _buildNavTile(
                 context: context,
@@ -410,6 +416,62 @@ class SettingsScreen extends ConsumerWidget {
                     color: AppColors.error, fontWeight: FontWeight.w700)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showGoalDialog(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    double goal = 5;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('하루 목표 공부 시간'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${goal.toStringAsFixed(0)}시간',
+                  style: AppTextStyles.headlineSmall
+                      .copyWith(color: AppColors.primary)),
+              Slider(
+                value: goal,
+                min: 1,
+                max: 16,
+                divisions: 15,
+                label: '${goal.toStringAsFixed(0)}시간',
+                onChanged: (v) => setLocal(() => goal = v),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('취소')),
+            FilledButton(
+              onPressed: () async {
+                if (uid != null) {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .set({'targetHours': goal}, SetOptions(merge: true));
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('하루 목표를 ${goal.toStringAsFixed(0)}시간으로 설정했습니다.'),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              child: const Text('저장'),
+            ),
+          ],
+        ),
       ),
     );
   }

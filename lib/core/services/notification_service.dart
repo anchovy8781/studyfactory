@@ -111,8 +111,22 @@ class NotificationService {
     } catch (_) {/* ignore */}
   }
 
+  static const _enabledKey = 'notifications_enabled';
+
+  Future<bool> isEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_enabledKey) ?? true;
+  }
+
+  Future<void> setEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_enabledKey, value);
+    if (!value) await cancelDailyReminder();
+  }
+
   /// Show a system notification AND save it to the in-app inbox.
   Future<void> notify(String title, String body) async {
+    if (!await isEnabled()) return; // 알림 꺼짐 시 표시 안 함
     await _saveToInbox(title, body);
     try {
       await init();

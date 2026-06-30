@@ -6,6 +6,7 @@ import 'package:studyverse/core/constants/app_strings.dart';
 import 'package:studyverse/core/router/app_router.dart';
 import 'package:studyverse/core/theme/app_theme.dart';
 import 'package:studyverse/core/theme/dark_theme.dart';
+import 'package:studyverse/core/theme/theme_mode_provider.dart';
 
 /// Root application widget.
 ///
@@ -20,6 +21,7 @@ class StudyVerseApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       // ── Router ─────────────────────────────────────────────────────────────
@@ -32,7 +34,7 @@ class StudyVerseApp extends ConsumerWidget {
       // ── Theme ──────────────────────────────────────────────────────────────
       theme: AppTheme.light,
       darkTheme: DarkTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
 
       // ── Localisation ───────────────────────────────────────────────────────
       locale: const Locale('ko', 'KR'),
