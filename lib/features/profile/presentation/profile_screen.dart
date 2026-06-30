@@ -42,6 +42,13 @@ final _menuItems = [
     route: '/store',
   ),
   _MenuItem(
+    icon: Icons.style_rounded,
+    iconColor: Color(0xFFE91E63),
+    title: '푸드카드',
+    subtitle: '확률형 카드 뽑기 & 도감',
+    route: '/foodcard',
+  ),
+  _MenuItem(
     icon: Icons.history_rounded,
     iconColor: AppColors.success,
     title: '내 공부 기록',

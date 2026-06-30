@@ -33,6 +33,7 @@ import 'package:studyverse/features/ads/presentation/ad_center_screen.dart';
 import 'package:studyverse/features/notifications/presentation/notification_screen.dart';
 import 'package:studyverse/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:studyverse/features/support/presentation/support_screen.dart';
+import 'package:studyverse/features/foodcard/presentation/food_card_screen.dart';
 import 'package:studyverse/features/home/presentation/home_screen.dart';
 import 'package:studyverse/features/statistics/presentation/statistics_screen.dart';
 import 'package:studyverse/features/calendar/presentation/calendar_screen.dart';
@@ -213,6 +214,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/support',
         pageBuilder: (context, state) =>
             _slidePage(state, const SupportScreen()),
+      ),
+
+      // ── Food cards (gacha) ──────────────────────────────────────────────
+      GoRoute(
+        path: '/foodcard',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const FoodCardScreen()),
       ),
 
       // ── Main shell (bottom nav) ─────────────────────────────────────────
