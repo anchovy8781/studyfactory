@@ -34,16 +34,16 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBY099ueNESXPeERP1vKmVdbFGQYMCksIk',
-    appId: '1:523054850515:web:be2f71b2e3984ea37e0f26',
+    apiKey: 'AIzaSyCfmpUdkJjfsnKR7xfDE-wGVregekRw2Uw',
+    appId: '1:523054850515:android:05d6fad2d630a0a87e0f26',
     messagingSenderId: '523054850515',
     projectId: 'studyfactory-3a14d',
     storageBucket: 'studyfactory-3a14d.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBY099ueNESXPeERP1vKmVdbFGQYMCksIk',
-    appId: '1:523054850515:web:be2f71b2e3984ea37e0f26',
+    apiKey: 'AIzaSyCfmpUdkJjfsnKR7xfDE-wGVregekRw2Uw',
+    appId: '1:523054850515:android:05d6fad2d630a0a87e0f26',
     messagingSenderId: '523054850515',
     projectId: 'studyfactory-3a14d',
     storageBucket: 'studyfactory-3a14d.firebasestorage.app',

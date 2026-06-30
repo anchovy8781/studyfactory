@@ -54,47 +54,28 @@ jobs:
           echo "Font sizes:"
           ls -lh assets/fonts/
 
-      - name: Create Firebase config (placeholder for CI)
-        run: |
-          cat > android/app/google-services.json << 'EOF'
-          {
-            "project_info": {
-              "project_number": "000000000000",
-              "project_id": "studyverse-placeholder",
-              "storage_bucket": "studyverse-placeholder.appspot.com"
-            },
-            "client": [
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
-                  "android_client_info": { "package_name": "com.studyverse.app" }
-                },
-                "api_key": [{ "current_key": "placeholder" }],
-                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
-              },
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:1111111111111111",
-                  "android_client_info": { "package_name": "com.studyverse.app.debug" }
-                },
-                "api_key": [{ "current_key": "placeholder" }],
-                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
-              },
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:2222222222222222",
-                  "android_client_info": { "package_name": "com.studyverse.app.profile" }
-                },
-                "api_key": [{ "current_key": "placeholder" }],
-                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
-              }
-            ],
-            "configuration_version": "1"
-          }
-          EOF
+      # google-services.json (real Firebase config) is committed in the repo —
+      # no placeholder generation needed.
 
       - name: Flutter pub get
         run: flutter pub get
+
+      - name: Set up release signing key (for stable Google Sign-In SHA-1)
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/studyverse.keystore
+          cat > android/keystore.properties << EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=studyverse.keystore
+          EOF
+          echo "Release keystore configured."
 
       - name: Patch plugin compileSdkVersion to 35
         run: |

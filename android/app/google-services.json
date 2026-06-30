@@ -1,25 +1,36 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "studyverse-placeholder",
-    "storage_bucket": "studyverse-placeholder.appspot.com"
+    "project_number": "523054850515",
+    "project_id": "studyfactory-3a14d",
+    "storage_bucket": "studyfactory-3a14d.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "mobilesdk_app_id": "1:523054850515:android:05d6fad2d630a0a87e0f26",
         "android_client_info": {
           "package_name": "com.studyverse.app"
         }
       },
+      "oauth_client": [
+        {
+          "client_id": "523054850515-3iajlj134jpnpc80ta2e8g7sd4rbhnh4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "placeholder-api-key"
+          "current_key": "AIzaSyCfmpUdkJjfsnKR7xfDE-wGVregekRw2Uw"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "523054850515-3iajlj134jpnpc80ta2e8g7sd4rbhnh4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
