@@ -24,11 +24,12 @@ class AdService {
     }
   }
 
-  // ── Ad unit IDs (Google test IDs — replace with your own) ────────────────
+  // ── Ad unit IDs ──────────────────────────────────────────────────────────
   static String get bannerUnitId => Platform.isAndroid
-      ? 'ca-app-pub-3940256099942544/6300978111' // test banner
+      ? 'ca-app-pub-7523188409057069/3733731991' // 실제 배너
       : 'ca-app-pub-3940256099942544/2934735716';
 
+  // TODO: 보상형 광고단위 ID 받는 대로 교체 (현재 테스트 ID)
   static String get rewardedUnitId => Platform.isAndroid
       ? 'ca-app-pub-3940256099942544/5224354917' // test rewarded
       : 'ca-app-pub-3940256099942544/1712485313';
