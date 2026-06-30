@@ -73,7 +73,7 @@ class AuthRepository {
           'totalStudyHours': 0.0,
           'todayStudyHours': 0.0,
           'streakDays': 0,
-          'points': 500, // 첫 가입 보상
+          'points': 0, // 0부터 시작 (활동으로 적립)
           'role': 'user',
           'provider': 'email',
           'referralCode': referralCode,

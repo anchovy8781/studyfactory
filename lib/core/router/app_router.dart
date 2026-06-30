@@ -28,6 +28,7 @@ import 'package:studyverse/features/auth/presentation/verify_email_screen.dart';
 import 'package:studyverse/features/legal/presentation/terms_screen.dart';
 import 'package:studyverse/features/legal/data/legal_documents.dart';
 import 'package:studyverse/features/store/presentation/point_store_screen.dart';
+import 'package:studyverse/features/store/presentation/point_history_screen.dart';
 import 'package:studyverse/features/ads/presentation/ad_center_screen.dart';
 import 'package:studyverse/features/notifications/presentation/notification_screen.dart';
 import 'package:studyverse/features/onboarding/presentation/onboarding_screen.dart';
@@ -172,6 +173,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/store',
         pageBuilder: (context, state) =>
             _slidePage(state, const PointStoreScreen()),
+      ),
+      GoRoute(
+        path: '/point-history',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const PointHistoryScreen()),
       ),
 
       // ── Ad center ───────────────────────────────────────────────────────

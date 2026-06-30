@@ -19,6 +19,20 @@ class RewardsService {
     return uid == null ? null : _db.collection('users').doc(uid);
   }
 
+  /// Append a row to the user's point history ledger (earn/spend).
+  Future<void> logPoints(int amount, String reason) async {
+    final me = _meDoc;
+    if (me == null || amount == 0) return;
+    try {
+      await me.collection('pointHistory').add({
+        'amount': amount,
+        'reason': reason,
+        'type': amount >= 0 ? 'earn' : 'spend',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {/* best-effort */}
+  }
+
   // ── Referral ───────────────────────────────────────────────────────────────
 
   /// Redeem an inviter's referral code. Both sides get 500p. Throws on error.
@@ -55,6 +69,7 @@ class RewardsService {
       'points': FieldValue.increment(500),
       'referredBy': inviterUid,
     });
+    await logPoints(500, '추천인 코드 입력 보상');
     // Queue the inviter's reward (they claim it on next app open).
     await _db.collection('referralCodes').doc(normalized).update({
       'pending': FieldValue.increment(1),
@@ -70,13 +85,15 @@ class RewardsService {
       final myCode = myDoc.data()?['referralCode'] as String?;
       if (myCode == null) return;
       final codeRef = _db.collection('referralCodes').doc(myCode);
-      await _db.runTransaction((tx) async {
+      final claimed = await _db.runTransaction<int>((tx) async {
         final snap = await tx.get(codeRef);
         final pending = (snap.data()?['pending'] as num?)?.toInt() ?? 0;
-        if (pending <= 0) return;
+        if (pending <= 0) return 0;
         tx.update(me, {'points': FieldValue.increment(pending * 500)});
         tx.update(codeRef, {'pending': 0});
+        return pending * 500;
       });
+      if (claimed > 0) await logPoints(claimed, '친구 가입 추천 보상');
     } catch (_) {/* best-effort */}
   }
 
@@ -101,6 +118,7 @@ class RewardsService {
       'totalStudyHours': FieldValue.increment(hours),
       if (awarded > 0) 'points': FieldValue.increment(awarded),
     });
+    if (awarded > 0) await logPoints(awarded, '$minutes분 공부 보상');
     return awarded;
   }
 
@@ -126,6 +144,7 @@ class RewardsService {
         'lastStreakDate': today,
         'points': FieldValue.increment(15),
       });
+      await logPoints(15, '연속 학습 $newStreak일 보상');
       return true;
     } catch (_) {
       return false;

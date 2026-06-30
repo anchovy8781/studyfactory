@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/core/services/rewards_service.dart';
 
 /// A purchasable store item.
 class _StoreItem {
@@ -56,7 +58,7 @@ class PointStoreScreen extends StatelessWidget {
 
                 return Column(
                   children: [
-                    _buildBalance(points),
+                    _buildBalance(context, points),
                     Expanded(
                       child: ListView(
                         padding: const EdgeInsets.all(AppSizes.paddingPageHorizontal),
@@ -145,11 +147,11 @@ class PointStoreScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBalance(int points) {
+  Widget _buildBalance(BuildContext context, int points) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.all(AppSizes.paddingPageHorizontal),
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
         borderRadius: BorderRadius.circular(AppSizes.radiusXl),
@@ -163,7 +165,53 @@ class PointStoreScreen extends StatelessWidget {
           Text('$points P',
               style: AppTextStyles.headlineLarge.copyWith(
                   color: Colors.white, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _balanceButton(
+                  icon: Icons.add_circle_outline_rounded,
+                  label: '포인트 충전',
+                  onTap: () => context.push('/ad-center'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _balanceButton(
+                  icon: Icons.receipt_long_rounded,
+                  label: '내역 전체보기',
+                  onTap: () => context.push('/point-history'),
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _balanceButton(
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 6),
+            Text(label,
+                style: AppTextStyles.labelMedium.copyWith(
+                    color: Colors.white, fontWeight: FontWeight.w700)),
+          ],
+        ),
       ),
     );
   }
@@ -270,6 +318,7 @@ class PointStoreScreen extends StatelessWidget {
           'ownedItems': FieldValue.arrayUnion([item.id]),
         });
       });
+      await RewardsService.instance.logPoints(-item.cost, '${item.title} 구매');
       messenger.showSnackBar(
         SnackBar(
           content: Text('${item.title} 구매 완료!'),
