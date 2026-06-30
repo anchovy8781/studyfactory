@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 /// once on the AI Coach screen — all AI tools then use it automatically.
 /// (Class name kept for compatibility with existing call sites.)
 class ClaudeAiService {
-  static const _model = 'gemini-1.5-flash-latest';
+  static const _model = 'gemini-flash-latest';
   static const _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -26,8 +26,11 @@ class ClaudeAiService {
   }) async {
     try {
       final resp = await _dio.post(
-        '$_baseUrl/$_model:generateContent?key=$apiKey',
-        options: Options(headers: {'content-type': 'application/json'}),
+        '$_baseUrl/$_model:generateContent',
+        options: Options(headers: {
+          'content-type': 'application/json',
+          'X-goog-api-key': apiKey,
+        }),
         data: {
           'system_instruction': {
             'parts': [
@@ -41,8 +44,9 @@ class ClaudeAiService {
               ],
             },
           ],
+          // Generous cap: gemini-flash uses some output budget for reasoning.
           'generationConfig': {
-            'maxOutputTokens': maxTokens,
+            'maxOutputTokens': maxTokens.clamp(1024, 8192),
             'temperature': 0.7,
           },
         },
@@ -53,8 +57,14 @@ class ClaudeAiService {
       }
       final parts =
           (candidates.first as Map)['content']?['parts'] as List?;
-      return (parts?.first as Map?)?['text'] as String? ??
-          '응답을 가져오지 못했습니다.';
+      if (parts == null) return '응답을 가져오지 못했습니다.';
+      // Join all text parts (reasoning models may return multiple parts).
+      final text = parts
+          .map((p) => (p as Map)['text'])
+          .whereType<String>()
+          .join('\n')
+          .trim();
+      return text.isEmpty ? '응답을 가져오지 못했습니다.' : text;
     } on DioException catch (e) {
       debugPrint('[Gemini] ${e.response?.statusCode}: ${e.message}');
       final code = e.response?.statusCode;
