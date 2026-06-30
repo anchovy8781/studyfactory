@@ -170,6 +170,13 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
 
   // ── Today summary ───────────────────────────────────────────────────────
   Widget _buildTodaySummaryCard() {
+    final data = ref.watch(homeDataProvider);
+    final todayHours = data?.todayStudyHours ?? 0.0;
+    final target = data?.targetHours ?? 8.0;
+    final h = todayHours.floor();
+    final m = ((todayHours - h) * 60).round();
+    final progress = target > 0 ? (todayHours / target).clamp(0.0, 1.0) : 0.0;
+    final remain = (target - todayHours).clamp(0.0, target);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -196,27 +203,27 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('목표 8시간',
+                child: Text('목표 ${target.toStringAsFixed(0)}시간',
                     style: AppTextStyles.labelSmall.copyWith(color: Colors.white)),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('0시간 0분',
+          Text('$h시간 $m분',
               style: AppTextStyles.displaySmall.copyWith(
                   color: Colors.white, fontWeight: FontWeight.w800)),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: 0.0,
+              value: progress,
               backgroundColor: Colors.white30,
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
               minHeight: 8,
             ),
           ),
           const SizedBox(height: 6),
-          Text('목표까지 8시간 남았어요',
+          Text('목표까지 ${remain.toStringAsFixed(1)}시간 남았어요',
               style: AppTextStyles.bodySmall.copyWith(color: Colors.white70)),
         ],
       ),
