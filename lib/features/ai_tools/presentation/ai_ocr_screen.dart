@@ -17,18 +17,24 @@ class _AiOcrScreenState extends State<AiOcrScreen> {
   static const _storage = FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
   final _aiService = ClaudeAiService();
   final _picker = ImagePicker();
+  final _commandCtrl = TextEditingController();
   File? _image;
   String _task = '핵심 내용 요약';
   bool _loading = false;
   String? _result;
-  String? _ocrText;
   String? _error;
+
+  @override
+  void dispose() {
+    _commandCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
       final xf = await _picker.pickImage(source: source, imageQuality: 85);
       if (xf == null) return;
-      setState(() { _image = File(xf.path); _result = null; _ocrText = null; _error = null; });
+      setState(() { _image = File(xf.path); _result = null; _error = null; });
     } catch (e) {
       setState(() => _error = '이미지를 가져오지 못했습니다: $e');
     }
@@ -40,12 +46,14 @@ class _AiOcrScreenState extends State<AiOcrScreen> {
     try {
       final key = await _storage.read(key: 'claude_api_key') ?? '';
       if (key.isEmpty) { setState(() { _error = 'AI Coach 화면에서 API 키를 먼저 설정하세요.'; _loading = false; }); return; }
-      // Simplified: use image_picker to get text manually (real OCR requires ML Kit text recognition)
-      const simulatedText = '[ 이미지에서 텍스트 추출 중... ]\n\n'
-          'OCR 기능은 실제 기기에서 카메라로 촬영한 프린트물을 분석합니다.\n'
-          '텍스트가 선명하게 보이도록 밝은 곳에서 촬영하세요.';
-      setState(() => _ocrText = simulatedText);
-      final analysis = await _aiService.analyzeOcrText(apiKey: key, ocrText: simulatedText, task: _task);
+      // Real OCR + understanding via Gemini vision (the actual photo is sent).
+      final bytes = await _image!.readAsBytes();
+      final analysis = await _aiService.analyzeImage(
+        apiKey: key,
+        imageBytes: bytes,
+        task: _task,
+        detail: _commandCtrl.text,
+      );
       setState(() { _result = analysis; });
     } catch (e) {
       setState(() { _error = e.toString(); });
@@ -84,7 +92,9 @@ class _AiOcrScreenState extends State<AiOcrScreen> {
           const SizedBox(height: AppSizes.spaceMd),
           Text('AI 작업', style: AppTextStyles.titleSmall),
           const SizedBox(height: AppSizes.spaceXs),
-          Wrap(spacing: 8, runSpacing: 8, children: ['핵심 내용 요약', '예상문제 생성', '개념 설명', '키워드 추출'].map((t) => ChoiceChip(label: Text(t), selected: _task == t, onSelected: (_) => setState(() => _task = t))).toList()),
+          Wrap(spacing: 8, runSpacing: 8, children: ['핵심 내용 요약', '예상문제 생성', '개념 설명', '키워드 추출', '문제 풀이', '번역'].map((t) => ChoiceChip(label: Text(t), selected: _task == t, onSelected: (_) => setState(() => _task = t))).toList()),
+          const SizedBox(height: AppSizes.spaceMd),
+          TextField(controller: _commandCtrl, maxLines: 2, decoration: const InputDecoration(labelText: '구체적 명령 (선택)', hintText: '예) 3번 문제만 풀어줘 / 영어를 한국어로 번역 / 표로 정리', border: OutlineInputBorder())),
           const SizedBox(height: AppSizes.spaceMd),
           ElevatedButton.icon(
             onPressed: (_loading || _image == null) ? null : _analyze,

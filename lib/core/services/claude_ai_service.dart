@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -74,6 +76,66 @@ class ClaudeAiService {
         throw Exception('API 키가 올바르지 않습니다. 설정에서 다시 확인해주세요.');
       }
       throw Exception('AI 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
+  }
+
+  /// Vision: analyse an image directly with Gemini (real OCR + understanding).
+  Future<String> analyzeImage({
+    required String apiKey,
+    required List<int> imageBytes,
+    required String task,
+    String detail = '',
+    String mimeType = 'image/jpeg',
+  }) async {
+    final prompt = '이미지(프린트물·교재·필기 등)를 정확히 읽고 다음 작업을 한국어로 수행하세요.\n'
+        '작업: $task'
+        '${detail.trim().isEmpty ? '' : '\n추가 요청사항: ${detail.trim()}'}';
+    try {
+      final resp = await _dio.post(
+        '$_baseUrl/$_model:generateContent',
+        options: Options(headers: {
+          'content-type': 'application/json',
+          'X-goog-api-key': apiKey,
+        }),
+        data: {
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt},
+                {
+                  'inline_data': {
+                    'mime_type': mimeType,
+                    'data': base64Encode(imageBytes),
+                  },
+                },
+              ],
+            },
+          ],
+          'generationConfig': {
+            'maxOutputTokens': 2048,
+            'temperature': 0.4,
+            'thinkingConfig': {'thinkingBudget': 0},
+          },
+        },
+      );
+      final candidates = resp.data['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) {
+        return '이미지를 분석하지 못했습니다.';
+      }
+      final parts = (candidates.first as Map)['content']?['parts'] as List?;
+      final text = (parts ?? [])
+          .map((p) => (p as Map)['text'])
+          .whereType<String>()
+          .join('\n')
+          .trim();
+      return text.isEmpty ? '이미지를 분석하지 못했습니다.' : text;
+    } on DioException catch (e) {
+      debugPrint('[Gemini-vision] ${e.response?.statusCode}: ${e.message}');
+      final code = e.response?.statusCode;
+      if (code == 400 || code == 401 || code == 403) {
+        throw Exception('API 키가 올바르지 않습니다. 설정에서 다시 확인해주세요.');
+      }
+      throw Exception('이미지 분석에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   }
 
