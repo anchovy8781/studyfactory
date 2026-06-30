@@ -133,10 +133,10 @@
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="face" />
 
-        <!-- Google AdMob App ID (현재 테스트 ID — 실제 수익은 본인 AdMob 앱 ID로 교체) -->
+        <!-- Google AdMob App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-7523188409057069~6463837118" />
 
         <!-- FileProvider for sharing captured images -->
         <provider
