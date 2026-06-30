@@ -23,8 +23,11 @@ const _subjects = [
   _Subject(label: '국어', emoji: '📖', color: Color(0xFF8D6E63)),
   _Subject(label: '과학', emoji: '🔬', color: AppColors.subjectScience),
   _Subject(label: '사회', emoji: '🌍', color: Color(0xFF5C6BC0)),
-  _Subject(label: '기타', emoji: '✏️', color: AppColors.textSecondary),
+  _Subject(label: '직접 입력', emoji: '✏️', color: AppColors.textSecondary),
 ];
+
+/// Index of the "직접 입력" (custom) subject chip.
+const _customSubjectIndex = 5;
 
 // ── AI Mode options ───────────────────────────────────────────────────────
 
@@ -65,6 +68,22 @@ class StudyStartScreen extends ConsumerStatefulWidget {
 class _StudyStartScreenState extends ConsumerState<StudyStartScreen> {
   int _selectedSubject = 0;
   final Set<int> _selectedModes = {0, 1, 2};
+  final _customSubjectCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _customSubjectCtrl.dispose();
+    super.dispose();
+  }
+
+  /// Resolved subject label (custom text when "직접 입력" is chosen).
+  String get _resolvedSubject {
+    if (_selectedSubject == _customSubjectIndex) {
+      final t = _customSubjectCtrl.text.trim();
+      return t.isEmpty ? '기타' : t;
+    }
+    return _subjects[_selectedSubject].label;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -179,6 +198,26 @@ class _StudyStartScreenState extends ConsumerState<StudyStartScreen> {
           itemCount: _subjects.length,
           itemBuilder: (context, i) => _buildSubjectChip(i),
         ).animate().fadeIn(duration: 500.ms, delay: 180.ms),
+        if (_selectedSubject == _customSubjectIndex) ...[
+          const SizedBox(height: AppSizes.spaceMd),
+          TextField(
+            controller: _customSubjectCtrl,
+            onChanged: (_) => setState(() {}),
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              hintText: '공부할 과목을 직접 입력하세요 (예: 한국사, 코딩)',
+              prefixIcon: const Icon(Icons.edit_rounded, size: 20),
+              filled: true,
+              fillColor: AppColors.surfaceVariant,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ).animate().fadeIn(duration: 300.ms),
+        ],
       ],
     );
   }
@@ -329,7 +368,8 @@ class _StudyStartScreenState extends ConsumerState<StudyStartScreen> {
       children: [
         AppButton(
           label: '${subject.emoji} 공부 시작',
-          onPressed: () => context.push('/study/certification'),
+          onPressed: () => context.push(
+              '/study/certification?subject=${Uri.encodeComponent(_resolvedSubject)}'),
           size: AppButtonSize.large,
         ).animate().fadeIn(duration: 500.ms, delay: 500.ms).slideY(begin: 0.1, end: 0),
         const SizedBox(height: AppSizes.spaceMd),

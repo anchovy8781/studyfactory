@@ -88,6 +88,16 @@ jobs:
           find "$HOME/.pub-cache/hosted" -name "build.gradle" -path "*/android/*" \
             -exec grep -l "compileSdkVersion" {} \; \
             | xargs sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 35/g' || true
+          # Newer plugins (package_info_plus 9.x, wakelock_plus 1.4.x) use
+          # `compileSdk = flutter.compileSdkVersion`, but the `flutter` Gradle
+          # extension isn't available to library subprojects on this Flutter
+          # channel → "Could not get unknown property 'flutter'". Replace those
+          # references with literals so the modules configure correctly.
+          find "$HOME/.pub-cache/hosted" -name "build.gradle" -path "*/android/*" \
+            -exec sed -i \
+              -e 's/flutter\.compileSdkVersion/35/g' \
+              -e 's/flutter\.targetSdkVersion/35/g' \
+              -e 's/flutter\.minSdkVersion/21/g' {} \; || true
           echo "Plugin compileSdkVersion patched to 35"
 
       - name: Build runner (code generation)

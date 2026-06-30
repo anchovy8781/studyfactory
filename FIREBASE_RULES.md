@@ -24,6 +24,10 @@ service cloud.firestore {
       match /grades/{doc} {
         allow read, write: if request.auth.uid == uid;
       }
+      // 연속 학습 기록 (본인만)
+      match /studySessions/{doc} {
+        allow read, write: if request.auth.uid == uid;
+      }
     }
 
     // 커뮤니티 게시글 + 댓글

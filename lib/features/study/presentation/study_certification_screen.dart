@@ -162,7 +162,10 @@ final _certificationProvider =
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 class StudyCertificationScreen extends ConsumerStatefulWidget {
-  const StudyCertificationScreen({super.key});
+  const StudyCertificationScreen({super.key, this.subject = ''});
+
+  /// Subject the user chose on the start screen (for the study log).
+  final String subject;
 
   @override
   ConsumerState<StudyCertificationScreen> createState() =>
@@ -862,6 +865,7 @@ class _StudyCertificationScreenState
               final awarded = await RewardsService.instance.recordStudySession(
                 minutes: minutes,
                 avgFocusScore: st.focusScore,
+                subject: widget.subject,
               );
               if (!context.mounted) return;
               if (awarded > 0) {

@@ -42,6 +42,8 @@ import 'package:studyverse/features/calendar/presentation/calendar_screen.dart';
 import 'package:studyverse/features/study/presentation/study_start_screen.dart';
 import 'package:studyverse/features/study/presentation/study_certification_screen.dart';
 import 'package:studyverse/features/study/presentation/grade_graph_screen.dart';
+import 'package:studyverse/features/study/presentation/streak_screen.dart';
+import 'package:studyverse/features/dictionary/presentation/dictionary_screen.dart';
 import 'package:studyverse/features/study/presentation/study_timer_screen.dart';
 import 'package:studyverse/features/community/presentation/community_screen.dart';
 import 'package:studyverse/features/community/presentation/crew_screen.dart';
@@ -245,6 +247,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             _slidePage(state, const GradeGraphScreen()),
       ),
 
+      // ── Continuous-study (streak) records ───────────────────────────────
+      GoRoute(
+        path: '/streak',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const StreakScreen()),
+      ),
+
+      // ── English dictionary ──────────────────────────────────────────────
+      GoRoute(
+        path: '/dictionary',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const DictionaryScreen()),
+      ),
+
       // ── Main shell (bottom nav) ─────────────────────────────────────────
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -349,8 +365,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.studyCertification,
         name: RouteNames.studyCertification,
-        pageBuilder: (context, state) =>
-            _modalPage(state, const StudyCertificationScreen()),
+        pageBuilder: (context, state) => _modalPage(
+          state,
+          StudyCertificationScreen(
+            subject: state.uri.queryParameters['subject'] ?? '',
+          ),
+        ),
       ),
       GoRoute(
         path: RoutePaths.studyTimer,

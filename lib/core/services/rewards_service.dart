@@ -105,6 +105,7 @@ class RewardsService {
   Future<int> recordStudySession({
     required int minutes,
     required double avgFocusScore,
+    String subject = '',
   }) async {
     final me = _meDoc;
     if (me == null || minutes <= 0) return 0;
@@ -118,6 +119,17 @@ class RewardsService {
       'totalStudyHours': FieldValue.increment(hours),
       if (awarded > 0) 'points': FieldValue.increment(awarded),
     });
+    // Keep a per-session history so the user can review their study log.
+    try {
+      await me.collection('studySessions').add({
+        'minutes': minutes,
+        'subject': subject.trim(),
+        'focusScore': avgFocusScore,
+        'pointsAwarded': awarded,
+        'date': _dayKey(DateTime.now()),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {/* ignore */}
     if (awarded > 0) await logPoints(awarded, '$minutes분 공부 보상');
     return awarded;
   }
@@ -138,9 +150,12 @@ class RewardsService {
       final yesterday = _dayKey(DateTime.now().subtract(const Duration(days: 1)));
       final currentStreak = (data['streakDays'] as num?)?.toInt() ?? 0;
       final newStreak = (last == yesterday) ? currentStreak + 1 : 1;
+      final currentBest = (data['bestStreak'] as num?)?.toInt() ?? 0;
+      final newBest = newStreak > currentBest ? newStreak : currentBest;
 
       await me.update({
         'streakDays': newStreak,
+        'bestStreak': newBest,
         'lastStreakDate': today,
         'points': FieldValue.increment(15),
       });

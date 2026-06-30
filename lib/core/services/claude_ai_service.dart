@@ -27,47 +27,68 @@ class ClaudeAiService {
     int maxTokens = 500,
   }) async {
     try {
-      final resp = await _dio.post(
-        '$_baseUrl/$_model:generateContent',
-        options: Options(headers: {
-          'content-type': 'application/json',
-          'X-goog-api-key': apiKey,
-        }),
-        data: {
-          'system_instruction': {
-            'parts': [
-              {'text': system},
-            ],
-          },
-          'contents': [
-            {
+      // Conversation turns; we append the model's partial output + a
+      // "continue" turn whenever the answer is cut off (finishReason MAX_TOKENS)
+      // so the user never sees a sentence that stops mid-way.
+      final contents = <Map<String, dynamic>>[
+        {
+          'parts': [
+            {'text': user},
+          ],
+        },
+      ];
+      final buffer = StringBuffer();
+      const maxRounds = 4;
+      for (var round = 0; round < maxRounds; round++) {
+        final resp = await _dio.post(
+          '$_baseUrl/$_model:generateContent',
+          options: Options(headers: {
+            'content-type': 'application/json',
+            'X-goog-api-key': apiKey,
+          }),
+          data: {
+            'system_instruction': {
               'parts': [
-                {'text': user},
+                {'text': system},
               ],
             },
-          ],
-          // Disable reasoning so the full answer fits the output budget
-          // (otherwise gemini-flash spends tokens on thinking and truncates).
-          'generationConfig': {
-            'maxOutputTokens': maxTokens.clamp(2048, 8192),
-            'temperature': 0.7,
-            'thinkingConfig': {'thinkingBudget': 0},
+            'contents': contents,
+            // Disable reasoning so the full answer fits the output budget
+            // (otherwise gemini-flash spends tokens on thinking and truncates).
+            'generationConfig': {
+              'maxOutputTokens': maxTokens.clamp(2048, 8192),
+              'temperature': 0.7,
+              'thinkingConfig': {'thinkingBudget': 0},
+            },
           },
-        },
-      );
-      final candidates = resp.data['candidates'] as List?;
-      if (candidates == null || candidates.isEmpty) {
-        return '응답을 가져오지 못했습니다.';
+        );
+        final candidates = resp.data['candidates'] as List?;
+        if (candidates == null || candidates.isEmpty) break;
+        final first = candidates.first as Map;
+        final parts = first['content']?['parts'] as List?;
+        final chunk = (parts ?? [])
+            .map((p) => (p as Map)['text'])
+            .whereType<String>()
+            .join('\n');
+        if (chunk.isNotEmpty) buffer.write(chunk);
+
+        final finish = first['finishReason'] as String?;
+        if (finish != 'MAX_TOKENS') break; // complete answer
+        // Ask the model to continue exactly where it left off.
+        contents.add({
+          'role': 'model',
+          'parts': [
+            {'text': chunk},
+          ],
+        });
+        contents.add({
+          'role': 'user',
+          'parts': [
+            {'text': '끊긴 부분에서 이어서 계속 작성해줘. 인사말이나 반복 없이 바로 이어서.'},
+          ],
+        });
       }
-      final parts =
-          (candidates.first as Map)['content']?['parts'] as List?;
-      if (parts == null) return '응답을 가져오지 못했습니다.';
-      // Join all text parts (reasoning models may return multiple parts).
-      final text = parts
-          .map((p) => (p as Map)['text'])
-          .whereType<String>()
-          .join('\n')
-          .trim();
+      final text = buffer.toString().trim();
       return text.isEmpty ? '응답을 가져오지 못했습니다.' : text;
     } on DioException catch (e) {
       debugPrint('[Gemini] ${e.response?.statusCode}: ${e.message}');

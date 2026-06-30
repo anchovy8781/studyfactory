@@ -104,7 +104,7 @@ class _HomeContent extends ConsumerWidget {
                 const SizedBox(height: AppSizes.spaceLg),
                 _buildStudyTimeCard(),
                 const SizedBox(height: AppSizes.spaceLg),
-                _buildStreakAndPoints(),
+                _buildStreakAndPoints(context),
                 const SizedBox(height: AppSizes.spaceLg),
                 _buildAiCard(context),
                 const SizedBox(height: AppSizes.spaceLg),
@@ -350,41 +350,47 @@ class _HomeContent extends ConsumerWidget {
     ).animate().fadeIn(duration: 600.ms, delay: 150.ms).slideY(begin: 0.05, end: 0);
   }
 
-  Widget _buildStreakAndPoints() {
+  Widget _buildStreakAndPoints(BuildContext context) {
     return Row(
       children: [
         Expanded(
-          child: _Card(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Text('🔥', style: TextStyle(fontSize: 24)),
-                    const SizedBox(width: AppSizes.spaceXs),
-                    Text(
-                      '연속 학습',
-                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.accentDark),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSizes.spaceSm),
-                Text(
-                  '${data.streakDays}일',
-                  style: AppTextStyles.headlineSmall.copyWith(
-                    color: AppColors.accentDark,
-                    fontWeight: FontWeight.w800,
+          child: GestureDetector(
+            onTap: () => context.push('/streak'),
+            child: _Card(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Text('🔥', style: TextStyle(fontSize: 24)),
+                      const SizedBox(width: AppSizes.spaceXs),
+                      Text(
+                        '연속 학습',
+                        style: AppTextStyles.labelSmall.copyWith(color: AppColors.accentDark),
+                      ),
+                      const Spacer(),
+                      Icon(Icons.chevron_right_rounded,
+                          size: 18, color: AppColors.accentDark.withOpacity(0.6)),
+                    ],
                   ),
-                ),
-                Text(
-                  '최고 ${data.bestStreak}일',
-                  style: AppTextStyles.caption.copyWith(color: AppColors.accentDark.withOpacity(0.7)),
-                ),
-              ],
+                  const SizedBox(height: AppSizes.spaceSm),
+                  Text(
+                    '${data.streakDays}일',
+                    style: AppTextStyles.headlineSmall.copyWith(
+                      color: AppColors.accentDark,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    '최고 ${data.bestStreak}일',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.accentDark.withOpacity(0.7)),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
