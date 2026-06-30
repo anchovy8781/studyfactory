@@ -38,6 +38,7 @@ import 'package:studyverse/features/study/presentation/study_certification_scree
 import 'package:studyverse/features/study/presentation/study_timer_screen.dart';
 import 'package:studyverse/features/community/presentation/community_screen.dart';
 import 'package:studyverse/features/community/presentation/crew_screen.dart';
+import 'package:studyverse/features/community/presentation/create_post_screen.dart';
 import 'package:studyverse/features/community/presentation/mentor_screen.dart';
 import 'package:studyverse/features/profile/presentation/profile_screen.dart';
 import 'package:studyverse/features/profile/presentation/my_info_screen.dart';
@@ -177,6 +178,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/ad-center',
         pageBuilder: (context, state) =>
             _slidePage(state, const AdCenterScreen()),
+      ),
+
+      // ── Community write ─────────────────────────────────────────────────
+      GoRoute(
+        path: '/community/write',
+        pageBuilder: (context, state) =>
+            _modalPage(state, const CreatePostScreen()),
       ),
 
       // ── Main shell (bottom nav) ─────────────────────────────────────────
