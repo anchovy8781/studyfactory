@@ -30,6 +30,7 @@ import 'package:studyverse/features/legal/data/legal_documents.dart';
 import 'package:studyverse/features/store/presentation/point_store_screen.dart';
 import 'package:studyverse/features/ads/presentation/ad_center_screen.dart';
 import 'package:studyverse/features/notifications/presentation/notification_screen.dart';
+import 'package:studyverse/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:studyverse/features/home/presentation/home_screen.dart';
 import 'package:studyverse/features/statistics/presentation/statistics_screen.dart';
 import 'package:studyverse/features/calendar/presentation/calendar_screen.dart';
@@ -192,6 +193,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/notifications',
         pageBuilder: (context, state) =>
             _slidePage(state, const NotificationScreen()),
+      ),
+
+      // ── Onboarding (first launch) ───────────────────────────────────────
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
       ),
 
       // ── Main shell (bottom nav) ─────────────────────────────────────────

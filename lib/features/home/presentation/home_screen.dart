@@ -7,9 +7,11 @@ import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
 import 'package:studyverse/shared/widgets/app_logo.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:studyverse/core/services/ai_config_service.dart';
 import 'package:studyverse/core/services/rewards_service.dart';
 import 'package:studyverse/core/services/notification_service.dart';
+import 'package:studyverse/features/onboarding/presentation/onboarding_screen.dart' show onboardingDoneKey;
 import 'package:studyverse/features/home/domain/models/home_model.dart';
 import 'package:studyverse/features/home/presentation/providers/home_provider.dart';
 
@@ -28,6 +30,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     AiConfigService.syncKey();
     // Daily streak reward + claim any pending referral rewards.
     _runDailyRewards();
+    // First-launch onboarding (5 study-habit questions).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeOnboard());
+  }
+
+  Future<void> _maybeOnboard() async {
+    final prefs = await SharedPreferences.getInstance();
+    final done = prefs.getBool(onboardingDoneKey) ?? false;
+    if (!done && mounted) context.go('/onboarding');
   }
 
   Future<void> _runDailyRewards() async {
