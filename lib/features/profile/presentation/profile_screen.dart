@@ -82,6 +82,7 @@ class ProfileScreen extends ConsumerWidget {
     final homeData = ref.watch(homeDataProvider);
     final nickname = user?.nickname ?? homeData?.userNickname ?? '사용자';
     final level = user?.level ?? 1;
+    final points = user?.points ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -100,7 +101,7 @@ class ProfileScreen extends ConsumerWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildProfileHeader(nickname, level),
+            _buildProfileHeader(nickname, level, points),
             _buildStatsRow(homeData),
             const SizedBox(height: 12),
             _buildMenuList(context),
@@ -112,8 +113,12 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ── Profile header ───────────────────────────────────────────────────────
-  Widget _buildProfileHeader(String nickname, int level) {
+  Widget _buildProfileHeader(String nickname, int level, int points) {
     final initial = nickname.isNotEmpty ? nickname.substring(0, 1) : 'S';
+    // Simple XP model: each level needs level*1000 points to advance.
+    final nextThreshold = level * 1000;
+    final progress = (points / nextThreshold).clamp(0.0, 1.0);
+    final remaining = (nextThreshold - points).clamp(0, nextThreshold);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
@@ -153,6 +158,31 @@ class ProfileScreen extends ConsumerWidget {
               'Lv. $level',
               style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.primary, fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Level-up progress
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor: AppColors.surfaceVariant,
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '레벨업까지 $remaining XP ($points / $nextThreshold)',
+                  style: AppTextStyles.labelSmall
+                      .copyWith(color: AppColors.textSecondary),
+                ),
+              ],
             ),
           ),
         ],

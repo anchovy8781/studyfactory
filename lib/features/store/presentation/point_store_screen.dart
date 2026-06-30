@@ -58,28 +58,90 @@ class PointStoreScreen extends StatelessWidget {
                   children: [
                     _buildBalance(points),
                     Expanded(
-                      child: ListView.separated(
+                      child: ListView(
                         padding: const EdgeInsets.all(AppSizes.paddingPageHorizontal),
-                        itemCount: _items.length,
-                        separatorBuilder: (_, __) =>
+                        children: [
+                          for (final item in _items) ...[
+                            _buildItemCard(context, userDoc, item, points,
+                                owned.contains(item.id)),
                             const SizedBox(height: AppSizes.spaceMd),
-                        itemBuilder: (context, i) {
-                          final item = _items[i];
-                          final ownedAlready = owned.contains(item.id);
-                          return _buildItemCard(
-                            context,
-                            userDoc,
-                            item,
-                            points,
-                            ownedAlready,
-                          );
-                        },
+                          ],
+                          const SizedBox(height: AppSizes.spaceMd),
+                          _buildGifticonSection(),
+                        ],
                       ),
                     ),
                   ],
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildGifticonSection() {
+    const gifticons = [
+      ('🍫', '편의점 초코바', 3000),
+      ('☕', '카페 아메리카노', 8000),
+      ('🍔', '햄버거 세트', 15000),
+      ('🍗', '치킨 기프티콘', 30000),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('간식 기프티콘', style: AppTextStyles.titleMedium),
+            const SizedBox(width: AppSizes.spaceSm),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+              ),
+              child: Text('준비 중',
+                  style: AppTextStyles.labelSmall
+                      .copyWith(color: AppColors.warning)),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.spaceXs),
+        Text('포인트로 기프티콘을 교환하는 기능은 곧 제공됩니다.',
+            style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textSecondary)),
+        const SizedBox(height: AppSizes.spaceMd),
+        ...gifticons.map((g) => Container(
+              margin: const EdgeInsets.only(bottom: AppSizes.spaceMd),
+              padding: const EdgeInsets.all(AppSizes.spaceLg),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+                boxShadow: AppColors.cardShadow,
+              ),
+              child: Row(
+                children: [
+                  Text(g.$1, style: const TextStyle(fontSize: 32)),
+                  const SizedBox(width: AppSizes.spaceLg),
+                  Expanded(
+                    child: Text(g.$2,
+                        style: AppTextStyles.bodyLarge
+                            .copyWith(fontWeight: FontWeight.w700)),
+                  ),
+                  const SizedBox(width: AppSizes.spaceMd),
+                  ElevatedButton(
+                    onPressed: null,
+                    style: ElevatedButton.styleFrom(
+                      disabledBackgroundColor: AppColors.border,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                      ),
+                    ),
+                    child: Text('${g.$3}P'),
+                  ),
+                ],
+              ),
+            )),
+      ],
     );
   }
 
