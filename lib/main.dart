@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:studyverse/app.dart';
 import 'package:studyverse/firebase_options.dart';
 import 'package:studyverse/core/services/notification_service.dart';
+import 'package:studyverse/core/services/ad_service.dart';
 
 /// SharedPreferences singleton provider (injected via ProviderScope override).
 final sharedPreferencesProvider =
@@ -56,6 +57,7 @@ Future<void> main() async {
       await _initHive();
       final sharedPrefs = await _initSharedPrefs();
       unawaited(NotificationService.instance.init());
+      unawaited(AdService.init());
 
       if (!kDebugMode && _firebaseInitialized) {
         unawaited(FirebaseAnalytics.instance.logAppOpen());

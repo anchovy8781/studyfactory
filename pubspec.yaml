@@ -51,6 +51,9 @@ dependencies:
   flutter_local_notifications: ^17.2.3
   timezone: ^0.9.4
 
+  # Ads (Google AdMob)
+  google_mobile_ads: ^5.1.0
+
   # Camera & ML
   camera: ^0.10.5+9
   google_mlkit_face_detection: ^0.9.0

@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/core/services/ad_service.dart';
 import 'package:studyverse/core/services/notification_service.dart';
+import 'package:studyverse/core/services/rewards_service.dart';
 import 'package:studyverse/features/ads/presentation/widgets/ad_banner.dart';
 
 /// 광고 센터 — reward-ad hub.
@@ -115,7 +118,7 @@ class _AdCenterScreenState extends State<AdCenterScreen> {
           const SizedBox(width: AppSizes.spaceMd),
           Expanded(
             child: Text(
-              '실제 광고는 추후 연동 예정입니다. 광고 시청 시 포인트가 지급되며, '
+              '광고를 끝까지 시청하면 포인트가 지급됩니다. '
               '적립한 포인트는 포인트 상점에서 사용할 수 있어요.',
               style: AppTextStyles.bodySmall
                   .copyWith(color: AppColors.textSecondary),
@@ -126,42 +129,49 @@ class _AdCenterScreenState extends State<AdCenterScreen> {
     );
   }
 
-  /// Integration point for a real rewarded ad. For now it simulates a reward
-  /// grant via Firestore. Replace the body with the AdMob rewarded-ad flow:
-  /// load → show → on userEarnedReward → grant points.
+  /// Loads and shows a real AdMob rewarded ad; grants points on earned reward.
   Future<void> _watchRewardedAd() async {
     final messenger = ScaffoldMessenger.of(context);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      messenger.showSnackBar(
-          const SnackBar(content: Text('로그인이 필요합니다.')));
+      messenger.showSnackBar(const SnackBar(content: Text('로그인이 필요합니다.')));
       return;
     }
 
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('광고 준비 중'),
-        content: const Text(
-            '실제 광고는 곧 연동됩니다.\n지금은 체험용으로 포인트를 지급할까요?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('취소')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('포인트 받기')),
-        ],
+    setState(() => _loading = true);
+    RewardedAd.load(
+      adUnitId: AdService.rewardedUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          if (mounted) setState(() => _loading = false);
+          ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad) => ad.dispose(),
+            onAdFailedToShowFullScreenContent: (ad, err) => ad.dispose(),
+          );
+          ad.show(onUserEarnedReward: (_, __) => _grantReward(uid));
+        },
+        onAdFailedToLoad: (error) {
+          if (mounted) setState(() => _loading = false);
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('지금은 시청할 광고가 없습니다. 잠시 후 다시 시도해 주세요.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
       ),
     );
-    if (proceed != true) return;
+  }
 
-    setState(() => _loading = true);
+  Future<void> _grantReward(String uid) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .update({'points': FieldValue.increment(_rewardPoints)});
+      await RewardsService.instance.logPoints(_rewardPoints, '광고 시청 보상');
       await NotificationService.instance
           .notify('포인트 적립 🎉', '광고 시청으로 $_rewardPoints포인트가 적립되었습니다!');
       messenger.showSnackBar(
@@ -173,14 +183,8 @@ class _AdCenterScreenState extends State<AdCenterScreen> {
       );
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('적립 실패: $e'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text('적립 실패: $e'), backgroundColor: AppColors.error),
       );
-    } finally {
-      if (mounted) setState(() => _loading = false);
     }
   }
 }
