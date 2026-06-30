@@ -7,6 +7,7 @@ import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
 import 'package:studyverse/shared/widgets/app_logo.dart';
+import 'package:studyverse/core/services/ai_config_service.dart';
 import 'package:studyverse/features/home/domain/models/home_model.dart';
 import 'package:studyverse/features/home/presentation/providers/home_provider.dart';
 
@@ -18,6 +19,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Pull the server-managed Gemini key so AI tools work without manual entry.
+    AiConfigService.syncKey();
+  }
+
   @override
   Widget build(BuildContext context) {
     final homeState = ref.watch(homeProvider);

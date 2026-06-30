@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/core/services/claude_ai_service.dart';
+import 'package:studyverse/core/services/ai_config_service.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
 
 // ── Chat message model ────────────────────────────────────────────────────────
@@ -59,6 +60,8 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
 
   Future<void> _loadApiKey() async {
     try {
+      // First pull the server-managed key (if any), then read the cache.
+      await AiConfigService.syncKey();
       final key = await _storage.read(key: _apiKeyStorageKey);
       if (mounted) setState(() => _apiKey = key);
     } catch (e) {
