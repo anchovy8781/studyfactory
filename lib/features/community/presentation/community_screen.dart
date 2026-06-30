@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/features/community/presentation/post_detail_screen.dart';
 
 enum _Sort { latest, oldest, popular, comments }
 
@@ -181,8 +182,16 @@ class _PostCard extends StatelessWidget {
     final likes = (m['likes'] as num?)?.toInt() ?? 0;
     final comments = (m['commentCount'] as num?)?.toInt() ?? 0;
     final ts = (m['createdAt'] as Timestamp?)?.toDate();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final likedBy =
+        ((m['likedBy'] as List?) ?? const []).map((e) => e.toString()).toSet();
+    final liked = uid != null && likedBy.contains(uid);
 
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PostDetailScreen(postRef: doc.reference),
+      )),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -235,10 +244,12 @@ class _PostCard extends StatelessWidget {
           Row(
             children: [
               _action(
-                icon: Icons.favorite_border_rounded,
+                icon: liked
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                color: liked ? AppColors.error : null,
                 count: likes,
-                onTap: () => doc.reference
-                    .update({'likes': FieldValue.increment(1)}).catchError((_) {}),
+                onTap: uid == null ? null : () => _toggleLike(uid, liked),
               ),
               const SizedBox(width: 20),
               _action(
@@ -247,15 +258,30 @@ class _PostCard extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 
-  Widget _action({required IconData icon, required int count, VoidCallback? onTap}) {
+  Future<void> _toggleLike(String uid, bool liked) async {
+    try {
+      await doc.reference.update({
+        'likes': FieldValue.increment(liked ? -1 : 1),
+        'likedBy':
+            liked ? FieldValue.arrayRemove([uid]) : FieldValue.arrayUnion([uid]),
+      });
+    } catch (_) {/* ignore */}
+  }
+
+  Widget _action(
+      {required IconData icon,
+      required int count,
+      VoidCallback? onTap,
+      Color? color}) {
     return InkWell(
       onTap: onTap,
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
+          Icon(icon, size: 18, color: color ?? AppColors.textSecondary),
           const SizedBox(width: 4),
           Text('$count',
               style: AppTextStyles.labelMedium
