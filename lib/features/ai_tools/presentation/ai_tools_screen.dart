@@ -64,7 +64,7 @@ class AiToolsScreen extends StatelessWidget {
   static final _studyTools = [
     _ToolItem(icon: Icons.timer_rounded, color: const Color(0xFF14B8A6), label: '포모도로 타이머', subtitle: 'AI 휴식 추천', route: '/ai-tools/pomodoro'),
     _ToolItem(icon: Icons.notifications_active_rounded, color: const Color(0xFFF97316), label: '망각곡선 알림', subtitle: '최적 복습 시점', route: '/ai-tools/forgetting-curve'),
-    _ToolItem(icon: Icons.emoji_events_rounded, color: const Color(0xFFEAB308), label: '성취 & 랭킹', subtitle: 'RPG 레벨 & 업적', route: '/rewards'),
+    _ToolItem(icon: Icons.emoji_events_rounded, color: const Color(0xFFEAB308), label: '랭킹', subtitle: '크루·개인 랭킹', route: '/ranking'),
   ];
 }
 

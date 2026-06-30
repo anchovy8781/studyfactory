@@ -38,12 +38,12 @@ class RankingScreen extends ConsumerStatefulWidget {
 class _RankingScreenState extends ConsumerState<RankingScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _tabs = ['학교', '지역', '전체'];
+  final _tabs = ['크루 랭킹', '개인 랭킹'];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this, initialIndex: 2);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
   }
 
   @override
@@ -78,7 +78,6 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
           TabBarView(
             controller: _tabController,
             children: [
-              _buildRankingContent(),
               _buildRankingContent(),
               _buildRankingContent(),
             ],
