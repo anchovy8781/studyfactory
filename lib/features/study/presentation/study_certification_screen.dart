@@ -287,6 +287,18 @@ class _StudyCertificationScreenState
               _buildTimerSection(state),
               const SizedBox(height: AppSizes.spaceLg),
               _buildCameraSection(state),
+              const SizedBox(height: AppSizes.spaceSm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.lock_outline_rounded,
+                      size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  Text('인식된 영상은 서버에 저장되지 않습니다',
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.textSecondary)),
+                ],
+              ),
               const SizedBox(height: AppSizes.spaceLg),
               _buildFocusScore(state),
               const SizedBox(height: AppSizes.spaceLg),

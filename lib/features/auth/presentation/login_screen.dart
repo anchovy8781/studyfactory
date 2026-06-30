@@ -233,20 +233,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 .fadeIn(duration: 500.ms, delay: 540.ms)
                 .slideY(begin: 0.1, end: 0),
 
-            const SizedBox(height: AppSizes.spaceXl),
-
-            // Divider
-            _buildDivider()
-                .animate()
-                .fadeIn(duration: 500.ms, delay: 580.ms),
-
-            const SizedBox(height: AppSizes.spaceXl),
-
-            // Social buttons
-            _buildSocialButtons()
-                .animate()
-                .fadeIn(duration: 500.ms, delay: 620.ms),
-
             const SizedBox(height: AppSizes.space2xl),
 
             // Register link
@@ -376,78 +362,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       errorStyle: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
     );
-  }
-
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.border)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceMd),
-          child: Text(
-            '또는',
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
-          ),
-        ),
-        const Expanded(child: Divider(color: AppColors.border)),
-      ],
-    );
-  }
-
-  Widget _buildSocialButtons() {
-    return Column(
-      children: [
-        Text(
-          '소셜 로그인',
-          style: AppTextStyles.labelSmall,
-        ),
-        const SizedBox(height: AppSizes.spaceMd),
-        _buildSocialButton(
-          label: 'Google로 계속하기',
-          color: Colors.white,
-          textColor: AppColors.textPrimary,
-          icon: _googleIcon(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSocialButton({
-    required String label,
-    required Color color,
-    required Color textColor,
-    required Widget icon,
-  }) {
-    return GestureDetector(
-      onTap: () => ref.read(authProvider.notifier).signInWithGoogle(),
-      child: Container(
-        height: AppSizes.buttonHeightMd,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppColors.cardShadow,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            icon,
-            const SizedBox(width: AppSizes.spaceSm),
-            Text(
-              label,
-              style: AppTextStyles.buttonSmall.copyWith(
-                color: textColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _googleIcon() {
-    return const Text('G', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4285F4)));
   }
 
   Widget _buildRegisterLink() {

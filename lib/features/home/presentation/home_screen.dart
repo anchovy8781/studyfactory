@@ -41,7 +41,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _runDailyRewards() async {
-    await RewardsService.instance.claimReferralRewards();
     final awarded = await RewardsService.instance.checkDailyStreak();
     if (awarded) {
       await NotificationService.instance
