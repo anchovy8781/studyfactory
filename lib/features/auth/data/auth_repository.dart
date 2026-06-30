@@ -105,20 +105,24 @@ class AuthRepository {
       final cred = await _auth.signInWithCredential(credential);
       final fbUser = cred.user!;
 
-      final doc = await _users.doc(fbUser.uid).get();
-      if (!doc.exists) {
-        await _users.doc(fbUser.uid).set({
-          'email': fbUser.email ?? '',
-          'nickname': fbUser.displayName ?? 'Google 사용자',
-          'level': 1,
-          'totalStudyHours': 0.0,
-          'streakDays': 0,
-          'points': 0,
-          'role': 'user',
-          'provider': 'google',
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
+      // Firestore profile creation is non-fatal (login must succeed even if
+      // Firestore is locked/unavailable).
+      try {
+        final doc = await _users.doc(fbUser.uid).get();
+        if (!doc.exists) {
+          await _users.doc(fbUser.uid).set({
+            'email': fbUser.email ?? '',
+            'nickname': fbUser.displayName ?? 'Google 사용자',
+            'level': 1,
+            'totalStudyHours': 0.0,
+            'streakDays': 0,
+            'points': 0,
+            'role': 'user',
+            'provider': 'google',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (_) {/* profile syncs once Firestore rules allow it */}
       return _fetchUser(fbUser);
     } on fb.FirebaseAuthException catch (e) {
       throw _mapError(e);
@@ -168,25 +172,33 @@ class AuthRepository {
   // ── Private helpers ───────────────────────────────────────────────────────
 
   Future<User> _fetchUser(fb.User fbUser) async {
-    final doc = await _users.doc(fbUser.uid).get();
-    final data = doc.data();
-    if (data == null) {
+    // Reading the Firestore profile must never fail the login. If Firestore
+    // is locked (permission-denied) or unavailable, fall back to the auth
+    // account info so the user still gets in.
+    try {
+      final doc = await _users.doc(fbUser.uid).get();
+      final data = doc.data();
+      if (data == null) return _basicUser(fbUser);
       return User(
         id: fbUser.uid,
-        email: fbUser.email ?? '',
-        nickname: fbUser.displayName ?? '사용자',
+        email: fbUser.email ?? (data['email'] as String? ?? ''),
+        nickname:
+            (data['nickname'] as String?) ?? fbUser.displayName ?? '사용자',
+        level: (data['level'] as num?)?.toInt() ?? 1,
+        totalStudyHours: (data['totalStudyHours'] as num?)?.toDouble() ?? 0.0,
+        streakDays: (data['streakDays'] as num?)?.toInt() ?? 0,
+        points: (data['points'] as num?)?.toInt() ?? 0,
       );
+    } catch (_) {
+      return _basicUser(fbUser);
     }
-    return User(
-      id: fbUser.uid,
-      email: fbUser.email ?? (data['email'] as String? ?? ''),
-      nickname: (data['nickname'] as String?) ?? fbUser.displayName ?? '사용자',
-      level: (data['level'] as num?)?.toInt() ?? 1,
-      totalStudyHours: (data['totalStudyHours'] as num?)?.toDouble() ?? 0.0,
-      streakDays: (data['streakDays'] as num?)?.toInt() ?? 0,
-      points: (data['points'] as num?)?.toInt() ?? 0,
-    );
   }
+
+  User _basicUser(fb.User u) => User(
+        id: u.uid,
+        email: u.email ?? '',
+        nickname: u.displayName ?? '사용자',
+      );
 
   String _mapError(fb.FirebaseAuthException e) {
     switch (e.code) {
