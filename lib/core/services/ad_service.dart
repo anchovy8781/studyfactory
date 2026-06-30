@@ -29,8 +29,7 @@ class AdService {
       ? 'ca-app-pub-7523188409057069/3733731991' // 실제 배너
       : 'ca-app-pub-3940256099942544/2934735716';
 
-  // TODO: 보상형 광고단위 ID 받는 대로 교체 (현재 테스트 ID)
   static String get rewardedUnitId => Platform.isAndroid
-      ? 'ca-app-pub-3940256099942544/5224354917' // test rewarded
+      ? 'ca-app-pub-7523188409057069/2348498135' // 실제 보상형
       : 'ca-app-pub-3940256099942544/1712485313';
 }
