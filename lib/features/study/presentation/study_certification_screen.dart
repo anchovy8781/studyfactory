@@ -227,8 +227,8 @@ class _StudyCertificationScreenState
 
       // Initial scan after 2 seconds
       Future.delayed(const Duration(seconds: 2), _doScan);
-      // Auto-scan every 60 seconds
-      _autoScanTimer = Timer.periodic(const Duration(seconds: 60), (_) => _doScan());
+      // Auto-scan every 5 seconds (AI 카메라 자동 분석)
+      _autoScanTimer = Timer.periodic(const Duration(seconds: 5), (_) => _doScan());
     } catch (e) {
       debugPrint('[Camera] init error: $e');
     }
