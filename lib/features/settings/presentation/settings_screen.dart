@@ -103,20 +103,23 @@ class SettingsScreen extends ConsumerWidget {
                 context: context,
                 icon: Icons.lock_outline_rounded,
                 iconColor: AppColors.textSecondary,
-                title: '개인정보 설정',
-                subtitle: '비밀번호 변경, 계정 보안',
+                title: '비밀번호 변경',
+                subtitle: '재설정 이메일 받기',
+                onTap: () => context.push('/forgot-password'),
               ),
               _buildNavTile(
                 context: context,
                 icon: Icons.policy_outlined,
                 iconColor: AppColors.textSecondary,
                 title: '개인정보 처리방침',
+                onTap: () => context.push('/privacy'),
               ),
               _buildNavTile(
                 context: context,
                 icon: Icons.description_outlined,
                 iconColor: AppColors.textSecondary,
                 title: '이용약관',
+                onTap: () => context.push('/terms'),
               ),
             ],
           ),
@@ -232,9 +235,18 @@ class SettingsScreen extends ConsumerWidget {
     required Color iconColor,
     required String title,
     String? subtitle,
+    VoidCallback? onTap,
   }) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap ??
+          () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('준비 중인 기능입니다.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(

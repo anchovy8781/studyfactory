@@ -78,11 +78,13 @@ class _MyInfoScreenState extends ConsumerState<MyInfoScreen> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
+                  gradient: AppColors.primaryGradient,
                   shape: BoxShape.circle,
                   boxShadow: AppColors.cardShadow,
                 ),
-                child: const Center(child: Text('🐶', style: TextStyle(fontSize: 50))),
+                child: const Center(
+                  child: Icon(Icons.person_rounded, color: Colors.white, size: 52),
+                ),
               ),
               if (_isEditing)
                 Container(

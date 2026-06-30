@@ -32,7 +32,14 @@ final _menuItems = [
     iconColor: AppColors.primary,
     title: '내 정보',
     subtitle: '프로필 및 계정 정보',
-    route: '/profile/info',
+    route: '/my/info',
+  ),
+  _MenuItem(
+    icon: Icons.store_rounded,
+    iconColor: AppColors.accent,
+    title: '포인트 상점',
+    subtitle: '포인트로 아이템 구매',
+    route: '/store',
   ),
   _MenuItem(
     icon: Icons.history_rounded,
@@ -46,27 +53,13 @@ final _menuItems = [
     iconColor: AppColors.warning,
     title: '내 뱃지',
     subtitle: '획득한 뱃지 보기',
-    route: '/badges',
-  ),
-  _MenuItem(
-    icon: Icons.people_outline_rounded,
-    iconColor: const Color(0xFF9C27B0),
-    title: '내 네트워크',
-    subtitle: '친구 및 팔로잉',
-    route: '/network',
-  ),
-  _MenuItem(
-    icon: Icons.card_giftcard_rounded,
-    iconColor: AppColors.accent,
-    title: '친구 초대하기',
-    subtitle: '초대하면 포인트 지급!',
-    route: '/invite',
+    route: '/rewards/badges',
   ),
   _MenuItem(
     icon: Icons.settings_outlined,
     iconColor: AppColors.textSecondary,
     title: '설정',
-    route: '/settings',
+    route: '/my/settings',
   ),
 ];
 
@@ -81,6 +74,7 @@ class ProfileScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final homeData = ref.watch(homeDataProvider);
     final nickname = user?.nickname ?? homeData?.userNickname ?? '사용자';
+    final level = user?.level ?? 1;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -99,7 +93,7 @@ class ProfileScreen extends ConsumerWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildProfileHeader(nickname),
+            _buildProfileHeader(nickname, level),
             _buildStatsRow(homeData),
             const SizedBox(height: 12),
             _buildMenuList(context),
@@ -111,37 +105,32 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ── Profile header ───────────────────────────────────────────────────────
-  Widget _buildProfileHeader(String nickname) {
+  Widget _buildProfileHeader(String nickname, int level) {
+    final initial = nickname.isNotEmpty ? nickname.substring(0, 1) : 'S';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
       color: AppColors.surface,
       child: Column(
         children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  shape: BoxShape.circle,
-                  boxShadow: AppColors.cardShadow,
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              shape: BoxShape.circle,
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: Center(
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 40,
+                  fontWeight: FontWeight.w800,
                 ),
-                child: const Center(child: Text('🐶', style: TextStyle(fontSize: 44))),
               ),
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
-              ),
-            ],
+            ),
           ).animate().scale(duration: 400.ms, curve: Curves.elasticOut),
           const SizedBox(height: 14),
           Text(nickname,
@@ -154,7 +143,7 @@ class ProfileScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              'Lv. 25 · 공부가 인생의 무기',
+              'Lv. $level',
               style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.primary, fontWeight: FontWeight.w700),
             ),

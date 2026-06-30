@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:studyverse/features/auth/domain/models/auth_model.dart';
 
 /// Firebase-backed authentication (no local accounts).
@@ -30,7 +31,15 @@ class AuthRepository {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
+  static const _deviceRegisteredKey = 'sv_device_registered';
+
   Future<User> register(String email, String password, String nickname) async {
+    // One account per device: block a second sign-up on the same device.
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_deviceRegisteredKey) ?? false) {
+      throw '이 기기에서는 이미 계정을 생성했습니다. 로그인해 주세요.';
+    }
+
     try {
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
@@ -44,21 +53,27 @@ class AuthRepository {
         email: email.trim(),
         nickname: nickname.trim(),
       );
-      await _users.doc(fbUser.uid).set({
-        'email': user.email,
-        'nickname': user.nickname,
-        'level': 1,
-        'totalStudyHours': 0.0,
-        'streakDays': 0,
-        'points': 0,
-        'role': 'user',
-        'provider': 'email',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      // Firestore profile write is non-fatal: the auth account is already
+      // created, so a missing/locked Firestore must not fail registration.
+      try {
+        await _users.doc(fbUser.uid).set({
+          'email': user.email,
+          'nickname': user.nickname,
+          'level': 1,
+          'totalStudyHours': 0.0,
+          'streakDays': 0,
+          'points': 0,
+          'role': 'user',
+          'provider': 'email',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {/* profile doc can be created on next login */}
+      await prefs.setBool(_deviceRegisteredKey, true);
       return user;
     } on fb.FirebaseAuthException catch (e) {
       throw _mapError(e);
     } catch (e) {
+      if (e is String) rethrow;
       throw _genericError(e);
     }
   }
@@ -109,6 +124,11 @@ class AuthRepository {
       throw _mapError(e);
     } catch (e) {
       if (e is String) rethrow;
+      final msg = e.toString();
+      if (msg.contains('ApiException: 10') ||
+          msg.contains('sign_in_failed')) {
+        throw 'Google 로그인 설정이 필요합니다. (Firebase 콘솔에 Android 앱 등록 + SHA-1 지문 추가)';
+      }
       throw _genericError(e);
     }
   }

@@ -27,6 +27,7 @@ import 'package:studyverse/features/auth/presentation/register_screen.dart';
 import 'package:studyverse/features/auth/presentation/forgot_password_screen.dart';
 import 'package:studyverse/features/legal/presentation/terms_screen.dart';
 import 'package:studyverse/features/legal/data/legal_documents.dart';
+import 'package:studyverse/features/store/presentation/point_store_screen.dart';
 import 'package:studyverse/features/home/presentation/home_screen.dart';
 import 'package:studyverse/features/statistics/presentation/statistics_screen.dart';
 import 'package:studyverse/features/calendar/presentation/calendar_screen.dart';
@@ -155,6 +156,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/privacy',
         pageBuilder: (context, state) =>
             _slidePage(state, const TermsScreen(document: privacyPolicy)),
+      ),
+
+      // ── Point store ─────────────────────────────────────────────────────
+      GoRoute(
+        path: '/store',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const PointStoreScreen()),
       ),
 
       // ── Main shell (bottom nav) ─────────────────────────────────────────

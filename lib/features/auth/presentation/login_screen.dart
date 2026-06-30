@@ -402,12 +402,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           style: AppTextStyles.labelSmall,
         ),
         const SizedBox(height: AppSizes.spaceMd),
-        Row(
-          children: [
-            Expanded(child: _buildSocialButton(label: 'Google', provider: 'google', color: Colors.white, textColor: AppColors.textPrimary, icon: _googleIcon())),
-            const SizedBox(width: AppSizes.spaceMd),
-            Expanded(child: _buildSocialButton(label: 'Kakao', provider: 'kakao', color: const Color(0xFFFEE500), textColor: const Color(0xFF191919), icon: _kakaoIcon())),
-          ],
+        _buildSocialButton(
+          label: 'Google로 계속하기',
+          color: Colors.white,
+          textColor: AppColors.textPrimary,
+          icon: _googleIcon(),
         ),
       ],
     );
@@ -415,28 +414,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildSocialButton({
     required String label,
-    required String provider,
     required Color color,
     required Color textColor,
     required Widget icon,
   }) {
     return GestureDetector(
-      onTap: () {
-        if (provider == 'google') {
-          ref.read(authProvider.notifier).signInWithGoogle();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                  '카카오 로그인은 Firebase Cloud Function 설정이 필요합니다.'),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd)),
-              margin: const EdgeInsets.all(AppSizes.spaceLg),
-            ),
-          );
-        }
-      },
+      onTap: () => ref.read(authProvider.notifier).signInWithGoogle(),
       child: Container(
         height: AppSizes.buttonHeightMd,
         decoration: BoxDecoration(
@@ -465,10 +448,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _googleIcon() {
     return const Text('G', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4285F4)));
-  }
-
-  Widget _kakaoIcon() {
-    return const Text('K', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF191919)));
   }
 
   Widget _buildRegisterLink() {
