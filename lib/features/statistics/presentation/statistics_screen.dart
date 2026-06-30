@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -392,78 +394,130 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
     );
   }
 
-  // ── Weekly grid ─────────────────────────────────────────────────────────
+  // ── Weekly grid (real data from studySessions) ───────────────────────────
   Widget _buildWeeklyGrid() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('이번 주 공부 시간',
-              style: AppTextStyles.titleSmall.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(_weekDays.length, (i) {
-              final hours = _weekHours[i];
-              final maxH = 6.0;
-              final ratio = hours / maxH;
-              final isToday = i == 4;
-              return Column(
-                children: [
-                  Text('${hours.toStringAsFixed(0)}h',
-                      style: AppTextStyles.labelSmall.copyWith(
-                          color: isToday ? AppColors.primary : AppColors.textSecondary,
-                          fontWeight: isToday ? FontWeight.w700 : FontWeight.w400)),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: 32,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.bottomCenter,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 600),
-                      width: 32,
-                      height: 80 * ratio,
-                      decoration: BoxDecoration(
-                        color: isToday ? AppColors.primary : AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(_weekDays[i],
-                      style: AppTextStyles.labelSmall.copyWith(
-                          color: isToday ? AppColors.primary : AppColors.textSecondary,
-                          fontWeight: isToday ? FontWeight.w700 : FontWeight.w400)),
-                ],
-              );
-            }),
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const SizedBox.shrink();
+    final stream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('studySessions')
+        .orderBy('createdAt', descending: true)
+        .limit(200)
+        .snapshots();
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        // Monday-based current week.
+        final now = DateTime.now();
+        final monday = DateTime(now.year, now.month, now.day)
+            .subtract(Duration(days: now.weekday - 1));
+        final weekMinutes = List<int>.filled(7, 0);
+        if (snapshot.hasData) {
+          for (final d in snapshot.data!.docs) {
+            final date = (d.data()['date'] as String?) ?? '';
+            final parts = date.split('-');
+            if (parts.length != 3) continue;
+            final dt = DateTime.tryParse(
+                '${parts[0]}-${parts[1].padLeft(2, '0')}-${parts[2].padLeft(2, '0')}');
+            if (dt == null) continue;
+            final idx = dt.difference(monday).inDays;
+            if (idx >= 0 && idx < 7) {
+              weekMinutes[idx] += (d.data()['minutes'] as num?)?.toInt() ?? 0;
+            }
+          }
+        }
+        final weekHours = weekMinutes.map((m) => m / 60.0).toList();
+        final maxH = (weekHours.reduce((a, b) => a > b ? a : b)).clamp(1.0, 1e9);
+        final totalH = weekHours.fold<double>(0, (s, h) => s + h);
+        final todayIdx = now.weekday - 1;
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: AppColors.cardShadow,
           ),
-          const SizedBox(height: 12),
-          const Divider(color: AppColors.divider),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('이번 주 총 공부 시간',
-                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
-              Text('0시간',
-                  style: AppTextStyles.titleSmall.copyWith(
-                      color: AppColors.primary, fontWeight: FontWeight.w700)),
+              Text('이번 주 공부 시간',
+                  style: AppTextStyles.titleSmall
+                      .copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(_weekDays.length, (i) {
+                  final hours = weekHours[i];
+                  final ratio = (hours / maxH).clamp(0.0, 1.0);
+                  final isToday = i == todayIdx;
+                  return Column(
+                    children: [
+                      Text(
+                          hours >= 1
+                              ? '${hours.toStringAsFixed(1)}h'
+                              : '${(hours * 60).round()}m',
+                          style: AppTextStyles.labelSmall.copyWith(
+                              color: isToday
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                              fontWeight: isToday
+                                  ? FontWeight.w700
+                                  : FontWeight.w400)),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: 32,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.bottomCenter,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 600),
+                          width: 32,
+                          height: 80 * ratio,
+                          decoration: BoxDecoration(
+                            color: isToday
+                                ? AppColors.primary
+                                : AppColors.primaryLight,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(_weekDays[i],
+                          style: AppTextStyles.labelSmall.copyWith(
+                              color: isToday
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                              fontWeight: isToday
+                                  ? FontWeight.w700
+                                  : FontWeight.w400)),
+                    ],
+                  );
+                }),
+              ),
+              const SizedBox(height: 12),
+              const Divider(color: AppColors.divider),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('이번 주 총 공부 시간',
+                      style: AppTextStyles.bodyMedium
+                          .copyWith(color: AppColors.textSecondary)),
+                  Text('${totalH.toStringAsFixed(1)}시간',
+                      style: AppTextStyles.titleSmall.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700)),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 400.ms, delay: 350.ms);
+        ).animate().fadeIn(duration: 400.ms, delay: 350.ms);
+      },
+    );
   }
 
   // ── Heatmap card ─────────────────────────────────────────────────────────

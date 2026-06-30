@@ -25,10 +25,19 @@ class HomeRepository {
       final d = doc.data();
       if (d == null) return _empty(user.displayName ?? '사용자');
 
+      // 순공 시간은 매일 초기화: 저장된 날짜가 오늘이 아니면 0으로 표시.
+      // (누적 기록은 통계(studySessions·totalStudyHours)에 그대로 보존됨)
+      final now = DateTime.now();
+      final todayKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final storedDay = d['todayStudyDate'] as String?;
+      final rawToday = (d['todayStudyHours'] as num?)?.toDouble() ?? 0.0;
+      final todayHours = storedDay == todayKey ? rawToday : 0.0;
+
       return HomeData(
         userNickname:
             (d['nickname'] as String?) ?? user.displayName ?? '사용자',
-        todayStudyHours: (d['todayStudyHours'] as num?)?.toDouble() ?? 0.0,
+        todayStudyHours: todayHours,
         targetHours: (d['targetHours'] as num?)?.toDouble() ?? 5.0,
         streakDays: (d['streakDays'] as num?)?.toInt() ?? 0,
         bestStreak: (d['bestStreak'] as num?)?.toInt() ?? 0,

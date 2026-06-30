@@ -21,6 +21,23 @@ class PostDetailScreen extends StatefulWidget {
 class _PostDetailScreenState extends State<PostDetailScreen> {
   final _commentCtrl = TextEditingController();
   bool _sending = false;
+  String? _replyToId; // 대댓글 대상 댓글 id
+  String? _replyToName;
+
+  void _startReply(String commentId, String name) {
+    setState(() {
+      _replyToId = commentId;
+      _replyToName = name;
+    });
+    FocusScope.of(context).requestFocus(FocusNode());
+  }
+
+  void _cancelReply() {
+    setState(() {
+      _replyToId = null;
+      _replyToName = null;
+    });
+  }
 
   CollectionReference<Map<String, dynamic>> get _comments =>
       widget.postRef.collection('comments');
@@ -50,11 +67,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         'authorId': user.uid,
         'authorName': authorName,
         'content': text,
+        'parentId': _replyToId, // null = 일반 댓글, 값 있으면 대댓글
         'createdAt': FieldValue.serverTimestamp(),
       });
       await widget.postRef
           .update({'commentCount': FieldValue.increment(1)}).catchError((_) {});
       _commentCtrl.clear();
+      setState(() {
+        _replyToId = null;
+        _replyToName = null;
+      });
       FocusScope.of(context).unfocus();
     } catch (e) {
       if (mounted) {
@@ -232,31 +254,80 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           );
         }
+        // 대댓글: parentId가 없으면 일반 댓글, 있으면 해당 댓글의 답글.
+        final topLevel = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+        final repliesByParent =
+            <String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
+        for (final d in docs) {
+          final parent = d.data()['parentId'] as String?;
+          if (parent == null || parent.isEmpty) {
+            topLevel.add(d);
+          } else {
+            repliesByParent.putIfAbsent(parent, () => []).add(d);
+          }
+        }
         return Column(
-          children: docs.map((d) {
-            final c = d.data();
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text((c['authorName'] as String?) ?? '익명',
-                      style: AppTextStyles.labelMedium
-                          .copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 2),
-                  Text((c['content'] as String?) ?? '',
-                      style: AppTextStyles.bodyMedium),
-                ],
-              ),
+          children: topLevel.map((d) {
+            final replies = repliesByParent[d.id] ?? const [];
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _commentTile(d, isReply: false),
+                ...replies.map((r) => _commentTile(r, isReply: true)),
+              ],
             );
           }).toList(),
         );
       },
+    );
+  }
+
+  Widget _commentTile(QueryDocumentSnapshot<Map<String, dynamic>> d,
+      {required bool isReply}) {
+    final c = d.data();
+    return Container(
+      margin: EdgeInsets.only(bottom: 8, left: isReply ? 28 : 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isReply ? AppColors.surfaceVariant : AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (isReply)
+                const Padding(
+                  padding: EdgeInsets.only(right: 4),
+                  child: Icon(Icons.subdirectory_arrow_right_rounded,
+                      size: 14, color: AppColors.textSecondary),
+                ),
+              Text((c['authorName'] as String?) ?? '익명',
+                  style: AppTextStyles.labelMedium
+                      .copyWith(fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text((c['content'] as String?) ?? '',
+              style: AppTextStyles.bodyMedium),
+          if (!isReply)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () =>
+                    _startReply(d.id, (c['authorName'] as String?) ?? '익명'),
+                icon: const Icon(Icons.reply_rounded, size: 14),
+                label: const Text('답글'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  foregroundColor: AppColors.textSecondary,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -268,14 +339,39 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: TextField(
-                controller: _commentCtrl,
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: '댓글을 입력하세요',
+            if (_replyToId != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6, left: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.reply_rounded,
+                        size: 14, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text('$_replyToName 님에게 답글 작성 중',
+                          style: AppTextStyles.labelSmall
+                              .copyWith(color: AppColors.primary)),
+                    ),
+                    GestureDetector(
+                      onTap: _cancelReply,
+                      child: const Icon(Icons.close,
+                          size: 16, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentCtrl,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText:
+                          _replyToId != null ? '답글을 입력하세요' : '댓글을 입력하세요',
                   filled: true,
                   fillColor: AppColors.surfaceVariant,
                   contentPadding:
@@ -296,6 +392,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.send_rounded, color: AppColors.primary),
               onPressed: _sending ? null : _send,
+            ),
+              ],
             ),
           ],
         ),

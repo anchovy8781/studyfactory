@@ -143,13 +143,25 @@ class RewardsService {
           : (_user?.displayName ?? '익명');
     } catch (_) {/* default 1.0 */}
     final awarded = (base * mult).round();
+    final today = _dayKey(DateTime.now());
 
-    await me.update({
-      'todayStudyHours': FieldValue.increment(hours),
-      'totalStudyHours': FieldValue.increment(hours),
-      // Monthly bucket drives the ranking; reset each month by the Cloud Function.
-      'monthlyStudyMinutes': FieldValue.increment(minutes),
-      if (awarded > 0) 'points': FieldValue.increment(awarded),
+    // 순공 시간(todayStudyHours)은 매일 0부터: 저장된 날짜가 오늘이 아니면
+    // 누적이 아니라 오늘치로 새로 시작한다. 누적·기록은 아래 totalStudyHours와
+    // studySessions(통계용)에 보존된다.
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(me);
+      final data = snap.data() ?? {};
+      final storedDay = data['todayStudyDate'] as String?;
+      final prevToday =
+          storedDay == today ? (data['todayStudyHours'] as num?)?.toDouble() ?? 0.0 : 0.0;
+      tx.update(me, {
+        'todayStudyHours': prevToday + hours,
+        'todayStudyDate': today,
+        'totalStudyHours': FieldValue.increment(hours),
+        // Monthly bucket drives the ranking; reset monthly by the Cloud Function.
+        'monthlyStudyMinutes': FieldValue.increment(minutes),
+        if (awarded > 0) 'points': FieldValue.increment(awarded),
+      });
     });
     // Mirror to a privacy-safe public leaderboard (nickname + minutes only),
     // so the ranking screen never needs to read other users' full docs.
