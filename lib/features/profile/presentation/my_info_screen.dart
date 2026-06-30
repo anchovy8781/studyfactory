@@ -7,8 +7,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/core/services/rewards_service.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
 
 class MyInfoScreen extends ConsumerStatefulWidget {
@@ -24,6 +26,9 @@ class _MyInfoScreenState extends ConsumerState<MyInfoScreen> {
   bool _isEditing = false;
   bool _saving = false;
   String? _photoPath;
+  String? _myReferralCode;
+  bool _alreadyReferred = false;
+  final _referralCtrl = TextEditingController();
 
   final _targetSubjects = <String>[];
   final _allSubjects = ['전기기사', '정보처리기사', '공무원', '토익', '리눅스마스터', '정보보안기사'];
@@ -50,6 +55,8 @@ class _MyInfoScreenState extends ConsumerState<MyInfoScreen> {
         final d = doc.data();
         if (d != null) {
           _schoolController.text = (d['school'] as String?) ?? '';
+          _myReferralCode = d['referralCode'] as String?;
+          _alreadyReferred = d['referredBy'] != null;
           final subs = (d['targetSubjects'] as List?) ?? const [];
           _targetSubjects
             ..clear()
@@ -64,7 +71,29 @@ class _MyInfoScreenState extends ConsumerState<MyInfoScreen> {
   void dispose() {
     _nicknameController.dispose();
     _schoolController.dispose();
+    _referralCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _redeemReferral() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await RewardsService.instance.redeemReferral(_referralCtrl.text);
+      if (mounted) {
+        setState(() => _alreadyReferred = true);
+        messenger.showSnackBar(const SnackBar(
+          content: Text('추천인 코드 적용! 500포인트가 지급되었습니다.'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(e.toString()),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   Future<void> _pickPhoto() async {
@@ -153,6 +182,8 @@ class _MyInfoScreenState extends ConsumerState<MyInfoScreen> {
             _buildInfoSection(),
             const SizedBox(height: 20),
             _buildSubjectsSection(),
+            const SizedBox(height: 20),
+            _buildReferralSection(),
             const SizedBox(height: 30),
             if (_isEditing)
               AppButton(
@@ -333,6 +364,120 @@ class _MyInfoScreenState extends ConsumerState<MyInfoScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildReferralSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.card_giftcard_rounded,
+                  color: AppColors.accent, size: 20),
+              const SizedBox(width: 8),
+              Text('추천인',
+                  style: AppTextStyles.titleSmall
+                      .copyWith(fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // My code (shareable)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('내 추천인 코드',
+                          style: AppTextStyles.labelSmall
+                              .copyWith(color: AppColors.textSecondary)),
+                      const SizedBox(height: 2),
+                      Text(_myReferralCode ?? '-',
+                          style: AppTextStyles.titleMedium.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2,
+                              color: AppColors.primary)),
+                    ],
+                  ),
+                ),
+                if (_myReferralCode != null)
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 20),
+                    onPressed: () {
+                      Clipboard.setData(
+                          ClipboardData(text: _myReferralCode!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('코드를 복사했습니다.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text('친구가 내 코드를 입력하면 서로 500P를 받아요!',
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary)),
+          // Redeem (only if not already referred)
+          if (!_alreadyReferred) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _referralCtrl,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: '추천인 코드 입력 (가입 24시간 이내)',
+                      filled: true,
+                      fillColor: AppColors.surfaceVariant,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _redeemReferral,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('적용'),
+                ),
+              ],
+            ),
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text('✓ 추천인 코드를 이미 적용했습니다.',
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.success)),
+            ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms, delay: 250.ms);
   }
 
   Widget _buildSubjectsSection() {

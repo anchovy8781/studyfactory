@@ -10,6 +10,8 @@ import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/core/services/face_detection_service.dart';
+import 'package:studyverse/core/services/rewards_service.dart';
+import 'package:studyverse/core/services/notification_service.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
 import 'package:studyverse/shared/widgets/app_logo.dart';
 
@@ -838,9 +840,20 @@ class _StudyCertificationScreenState
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
             ),
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              context.go('/home');
+              final st = ref.read(_certificationProvider);
+              final minutes = st.elapsed.inMinutes;
+              final awarded = await RewardsService.instance.recordStudySession(
+                minutes: minutes,
+                avgFocusScore: st.focusScore,
+              );
+              if (!context.mounted) return;
+              if (awarded > 0) {
+                await NotificationService.instance.notify(
+                    '공부 완료 🎉', '$minutes분 공부로 $awarded포인트가 지급되었습니다!');
+              }
+              if (context.mounted) context.go('/home');
             },
             child:
                 const Text('종료하기', style: TextStyle(color: Colors.white)),

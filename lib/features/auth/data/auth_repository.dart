@@ -64,17 +64,26 @@ class AuthRepository {
       );
       // Firestore profile write is non-fatal: the auth account is already
       // created, so a missing/locked Firestore must not fail registration.
+      final referralCode = _generateReferralCode();
       try {
         await _users.doc(fbUser.uid).set({
           'email': user.email,
           'nickname': user.nickname,
           'level': 1,
           'totalStudyHours': 0.0,
+          'todayStudyHours': 0.0,
           'streakDays': 0,
-          'points': 0,
+          'points': 500, // 첫 가입 보상
           'role': 'user',
           'provider': 'email',
+          'referralCode': referralCode,
+          'referredBy': null,
           'createdAt': FieldValue.serverTimestamp(),
+        });
+        // Reverse lookup map for referral redemption.
+        await _db.collection('referralCodes').doc(referralCode).set({
+          'uid': fbUser.uid,
+          'pending': 0,
         });
       } catch (_) {/* profile doc can be created on next login */}
 
@@ -276,6 +285,18 @@ class AuthRepository {
         email: u.email ?? '',
         nickname: u.displayName ?? '사용자',
       );
+
+  String _generateReferralCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final buf = StringBuffer();
+    var seed = now;
+    for (var i = 0; i < 6; i++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      buf.write(chars[seed % chars.length]);
+    }
+    return buf.toString();
+  }
 
   String _mapError(fb.FirebaseAuthException e) {
     switch (e.code) {

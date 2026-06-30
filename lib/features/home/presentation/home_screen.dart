@@ -8,6 +8,8 @@ import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/shared/widgets/app_button.dart';
 import 'package:studyverse/shared/widgets/app_logo.dart';
 import 'package:studyverse/core/services/ai_config_service.dart';
+import 'package:studyverse/core/services/rewards_service.dart';
+import 'package:studyverse/core/services/notification_service.dart';
 import 'package:studyverse/features/home/domain/models/home_model.dart';
 import 'package:studyverse/features/home/presentation/providers/home_provider.dart';
 
@@ -24,6 +26,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     // Pull the server-managed Gemini key so AI tools work without manual entry.
     AiConfigService.syncKey();
+    // Daily streak reward + claim any pending referral rewards.
+    _runDailyRewards();
+  }
+
+  Future<void> _runDailyRewards() async {
+    await RewardsService.instance.claimReferralRewards();
+    final awarded = await RewardsService.instance.checkDailyStreak();
+    if (awarded) {
+      await NotificationService.instance
+          .notify('연속 학습 보상 🔥', '오늘의 연속 학습 보상 15포인트가 지급되었습니다!');
+      ref.read(homeProvider.notifier).refresh();
+    }
   }
 
   @override
