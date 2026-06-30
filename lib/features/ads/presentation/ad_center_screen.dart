@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/core/services/notification_service.dart';
 import 'package:studyverse/features/ads/presentation/widgets/ad_banner.dart';
 
 /// 광고 센터 — reward-ad hub.
@@ -161,6 +162,8 @@ class _AdCenterScreenState extends State<AdCenterScreen> {
           .collection('users')
           .doc(uid)
           .update({'points': FieldValue.increment(_rewardPoints)});
+      await NotificationService.instance
+          .notify('포인트 적립 🎉', '광고 시청으로 $_rewardPoints포인트가 적립되었습니다!');
       messenger.showSnackBar(
         SnackBar(
           content: Text('$_rewardPoints포인트가 적립되었습니다!'),

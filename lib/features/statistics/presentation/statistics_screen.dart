@@ -2,8 +2,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/features/home/presentation/providers/home_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Mock data
@@ -57,6 +59,19 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
     super.dispose();
   }
 
+  void _shareStats() {
+    final data = ref.read(homeDataProvider);
+    final hours = data?.todayStudyHours ?? 0;
+    final streak = data?.streakDays ?? 0;
+    final points = data?.points ?? 0;
+    final text = '📚 StudyVerse 학습 통계\n'
+        '오늘 순공: ${hours.toStringAsFixed(1)}시간\n'
+        '연속 학습: $streak일\n'
+        '포인트: $points P\n'
+        '#StudyVerse #공부인증';
+    Share.share(text, subject: 'StudyVerse 학습 통계');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,7 +84,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined, color: AppColors.textPrimary),
-            onPressed: () {},
+            onPressed: _shareStats,
           ),
         ],
       ),

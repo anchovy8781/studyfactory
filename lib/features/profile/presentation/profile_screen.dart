@@ -94,7 +94,7 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
-            onPressed: () {},
+            onPressed: () => context.push('/notifications'),
           ),
         ],
       ),
