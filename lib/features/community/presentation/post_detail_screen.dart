@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/core/utils/content_filter.dart';
+import 'package:studyverse/features/community/presentation/community_screen.dart'
+    show reportPost;
 
 /// Post detail with a comment thread (view + write).
 class PostDetailScreen extends StatefulWidget {
@@ -32,6 +35,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final text = _commentCtrl.text.trim();
     final user = FirebaseAuth.instance.currentUser;
     if (text.isEmpty || user == null) return;
+    if (!ContentFilter.isClean(text)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('부적절한 표현이 포함되어 있어 등록할 수 없습니다.'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
     setState(() => _sending = true);
     try {
       await _comments.add({
@@ -52,6 +63,53 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       }
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _reportPost() async {
+    final reasons = ['스팸/광고', '욕설/비방', '음란물', '허위정보', '기타'];
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('신고 사유를 선택하세요',
+                  style: AppTextStyles.titleSmall),
+            ),
+            ...reasons.map((r) => ListTile(
+                  title: Text(r),
+                  onTap: () => Navigator.of(ctx).pop(r),
+                )),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (reason == null) return;
+    try {
+      await reportPost(widget.postRef, reason);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('신고가 접수되었습니다.'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('신고 실패: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     }
   }
 
@@ -101,12 +159,42 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text((m['authorName'] as String?) ?? '익명',
-                  style: AppTextStyles.bodyMedium
-                      .copyWith(fontWeight: FontWeight.w700)),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text((m['authorName'] as String?) ?? '익명',
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(fontWeight: FontWeight.w700)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.flag_outlined, size: 20),
+                    color: AppColors.textSecondary,
+                    tooltip: '신고',
+                    onPressed: () => _reportPost(),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               Text((m['content'] as String?) ?? '',
                   style: AppTextStyles.bodyMedium.copyWith(height: 1.5)),
+              if ((m['imageUrl'] as String?)?.isNotEmpty ?? false) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  child: Image.network(
+                    m['imageUrl'] as String,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) =>
+                        progress == null
+                            ? child
+                            : const SizedBox(
+                                height: 180,
+                                child:
+                                    Center(child: CircularProgressIndicator())),
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ],
             ],
           ),
         );

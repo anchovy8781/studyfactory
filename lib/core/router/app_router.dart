@@ -41,6 +41,7 @@ import 'package:studyverse/features/statistics/presentation/statistics_screen.da
 import 'package:studyverse/features/calendar/presentation/calendar_screen.dart';
 import 'package:studyverse/features/study/presentation/study_start_screen.dart';
 import 'package:studyverse/features/study/presentation/study_certification_screen.dart';
+import 'package:studyverse/features/study/presentation/grade_graph_screen.dart';
 import 'package:studyverse/features/study/presentation/study_timer_screen.dart';
 import 'package:studyverse/features/community/presentation/community_screen.dart';
 import 'package:studyverse/features/community/presentation/crew_screen.dart';
@@ -235,6 +236,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/events',
         pageBuilder: (context, state) =>
             _slidePage(state, const EventsScreen()),
+      ),
+
+      // ── Grade improvement graph ─────────────────────────────────────────
+      GoRoute(
+        path: '/grade-graph',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const GradeGraphScreen()),
       ),
 
       // ── Main shell (bottom nav) ─────────────────────────────────────────

@@ -56,6 +56,13 @@ final _menuItems = [
     route: '/statistics',
   ),
   _MenuItem(
+    icon: Icons.show_chart_rounded,
+    iconColor: Color(0xFF1A73E8),
+    title: '과목 성적 향상도',
+    subtitle: '시험 점수 추이 그래프',
+    route: '/grade-graph',
+  ),
+  _MenuItem(
     icon: Icons.workspace_premium_rounded,
     iconColor: AppColors.warning,
     title: '내 뱃지',

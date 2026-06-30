@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/core/utils/content_filter.dart';
 import 'package:studyverse/features/community/presentation/post_detail_screen.dart';
 
 enum _Sort { latest, oldest, popular, comments }
@@ -134,6 +135,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         var docs = snapshot.data!.docs;
+        // 검열: 신고 3회 이상 게시글 숨김
+        docs = docs
+            .where((d) => ((d.data()['reportCount'] as num?)?.toInt() ?? 0) < 3)
+            .toList();
         if (_query.isNotEmpty) {
           docs = docs.where((d) {
             final m = d.data();
@@ -178,6 +183,7 @@ class _PostCard extends StatelessWidget {
     final m = doc.data();
     final name = (m['authorName'] as String?) ?? '익명';
     final content = (m['content'] as String?) ?? '';
+    final imageUrl = (m['imageUrl'] as String?) ?? '';
     final tag = (m['certTag'] as String?) ?? '';
     final likes = (m['likes'] as num?)?.toInt() ?? 0;
     final comments = (m['commentCount'] as num?)?.toInt() ?? 0;
@@ -236,10 +242,46 @@ class _PostCard extends StatelessWidget {
                       style: AppTextStyles.labelSmall
                           .copyWith(color: AppColors.primary)),
                 ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert,
+                    size: 20, color: AppColors.textSecondary),
+                onSelected: (v) {
+                  if (v == 'report') _showReportSheet(context);
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'report',
+                    child: Row(
+                      children: [
+                        Icon(Icons.flag_outlined, size: 18),
+                        SizedBox(width: 8),
+                        Text('신고하기'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Text(content, style: AppTextStyles.bodyMedium.copyWith(height: 1.5)),
+          if (imageUrl.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                imageUrl,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : const SizedBox(
+                        height: 160,
+                        child: Center(child: CircularProgressIndicator())),
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -260,6 +302,49 @@ class _PostCard extends StatelessWidget {
       ),
       ),
     );
+  }
+
+  Future<void> _showReportSheet(BuildContext context) async {
+    const reasons = ['스팸/광고', '욕설/비방', '음란물', '허위정보', '기타'];
+    final messenger = ScaffoldMessenger.of(context);
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('신고 사유를 선택하세요', style: AppTextStyles.titleSmall),
+            ),
+            ...reasons.map((r) => ListTile(
+                  title: Text(r),
+                  onTap: () => Navigator.of(ctx).pop(r),
+                )),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (reason == null) return;
+    try {
+      await reportPost(doc.reference, reason);
+      messenger.showSnackBar(const SnackBar(
+        content: Text('신고가 접수되었습니다.'),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('신고 실패: $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   Future<void> _toggleLike(String uid, bool liked) async {
@@ -302,16 +387,37 @@ class _PostCard extends StatelessWidget {
 }
 
 /// Helper used by the write screen to publish a post.
-Future<void> createPost(String content, String certTag) async {
+Future<void> createPost(String content, String certTag,
+    {String? imageUrl}) async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) throw '로그인이 필요합니다.';
+  final banned = ContentFilter.findBanned(content);
+  if (banned != null) {
+    throw '부적절한 표현이 포함되어 있어 등록할 수 없습니다.';
+  }
   await FirebaseFirestore.instance.collection('posts').add({
     'authorId': user.uid,
     'authorName': user.displayName ?? '익명',
     'content': content.trim(),
     'certTag': certTag.trim(),
+    if (imageUrl != null) 'imageUrl': imageUrl,
     'likes': 0,
     'commentCount': 0,
+    'reportCount': 0,
     'createdAt': FieldValue.serverTimestamp(),
   });
+}
+
+/// Report a post (writes to `reports`; hides it after enough reports).
+Future<void> reportPost(
+    DocumentReference<Map<String, dynamic>> postRef, String reason) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) throw '로그인이 필요합니다.';
+  await FirebaseFirestore.instance.collection('reports').add({
+    'postId': postRef.id,
+    'reporterId': user.uid,
+    'reason': reason,
+    'createdAt': FieldValue.serverTimestamp(),
+  });
+  await postRef.update({'reportCount': FieldValue.increment(1)});
 }
