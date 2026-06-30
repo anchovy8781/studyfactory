@@ -6,7 +6,7 @@ import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/core/utils/content_filter.dart';
 import 'package:studyverse/features/community/presentation/community_screen.dart'
-    show reportPost;
+    show reportPost, resolveUserName;
 
 /// Post detail with a comment thread (view + write).
 class PostDetailScreen extends StatefulWidget {
@@ -45,9 +45,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
     setState(() => _sending = true);
     try {
+      final authorName = await resolveUserName();
       await _comments.add({
         'authorId': user.uid,
-        'authorName': user.displayName ?? '익명',
+        'authorName': authorName,
         'content': text,
         'createdAt': FieldValue.serverTimestamp(),
       });

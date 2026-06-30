@@ -82,13 +82,9 @@ class StreakScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    Text('과목별 학습 시간', style: AppTextStyles.titleSmall),
-                    const SizedBox(height: 8),
-                    _buildSubjectStats(me),
-                    const SizedBox(height: 24),
-                    Text('학습 기록', style: AppTextStyles.titleSmall),
-                    const SizedBox(height: 8),
-                    _buildSessionList(me),
+                    // Single stream feeds both subject stats + the session log
+                    // (avoids two separate Firestore listeners on the same data).
+                    _buildSessionsSection(me),
                   ],
                 );
               },
@@ -147,165 +143,171 @@ class StreakScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSubjectStats(DocumentReference<Map<String, dynamic>> me) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: me.collection('studySessions').snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const SizedBox(
-              height: 60, child: Center(child: CircularProgressIndicator()));
-        }
-        final totals = <String, int>{};
-        for (final d in snapshot.data!.docs) {
-          final m = d.data();
-          final subject = ((m['subject'] as String?)?.trim().isNotEmpty ?? false)
-              ? (m['subject'] as String).trim()
-              : '기타';
-          totals[subject] =
-              (totals[subject] ?? 0) + ((m['minutes'] as num?)?.toInt() ?? 0);
-        }
-        if (totals.isEmpty) {
-          return _empty('아직 과목별 기록이 없어요.');
-        }
-        final entries = totals.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-        final maxMin = entries.first.value.clamp(1, 1 << 30);
-        const colors = [
-          AppColors.primary,
-          Color(0xFFEF6C00),
-          Color(0xFF2E7D32),
-          Color(0xFF8E24AA),
-          Color(0xFF00838F),
-          Color(0xFFC62828),
-        ];
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: AppColors.cardShadow,
-          ),
-          child: Column(
-            children: entries.asMap().entries.map((e) {
-              final subject = e.value.key;
-              final minutes = e.value.value;
-              final color = colors[e.key % colors.length];
-              final h = minutes ~/ 60;
-              final m = minutes % 60;
-              final label = h > 0 ? '$h시간 $m분' : '$m분';
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(subject,
-                              style: AppTextStyles.bodyMedium
-                                  .copyWith(fontWeight: FontWeight.w600)),
-                        ),
-                        Text(label,
-                            style: AppTextStyles.bodySmall
-                                .copyWith(color: AppColors.textSecondary)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: minutes / maxMin,
-                        backgroundColor: AppColors.surfaceVariant,
-                        valueColor: AlwaysStoppedAnimation(color),
-                        minHeight: 8,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSessionList(DocumentReference<Map<String, dynamic>> me) {
+  /// Subject stats + session log from a single Firestore listener.
+  Widget _buildSessionsSection(DocumentReference<Map<String, dynamic>> me) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: me
           .collection('studySessions')
           .orderBy('createdAt', descending: true)
-          .limit(60)
+          .limit(120)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return _empty('기록을 불러올 수 없습니다.');
         }
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const SizedBox(
+              height: 80, child: Center(child: CircularProgressIndicator()));
         }
         final docs = snapshot.data!.docs;
-        if (docs.isEmpty) {
-          return _empty('아직 학습 기록이 없어요.\n공부를 완료하면 여기에 기록됩니다!');
-        }
         return Column(
-          children: docs.map((d) {
-            final m = d.data();
-            final minutes = (m['minutes'] as num?)?.toInt() ?? 0;
-            final subject = (m['subject'] as String?)?.trim() ?? '';
-            final date = (m['date'] as String?) ?? '';
-            final focus = (m['focusScore'] as num?)?.toDouble() ?? 0;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: AppColors.cardShadow,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.menu_book_rounded,
-                        color: AppColors.primary),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(subject.isEmpty ? '공부 세션' : subject,
-                            style: AppTextStyles.bodyMedium
-                                .copyWith(fontWeight: FontWeight.w700)),
-                        Text(date,
-                            style: AppTextStyles.labelSmall
-                                .copyWith(color: AppColors.textSecondary)),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('$minutes분',
-                          style: AppTextStyles.bodyMedium
-                              .copyWith(fontWeight: FontWeight.w700)),
-                      Text('집중 ${focus.toStringAsFixed(0)}%',
-                          style: AppTextStyles.labelSmall
-                              .copyWith(color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('과목별 학습 시간', style: AppTextStyles.titleSmall),
+            const SizedBox(height: 8),
+            _subjectStats(docs),
+            const SizedBox(height: 24),
+            Text('학습 기록', style: AppTextStyles.titleSmall),
+            const SizedBox(height: 8),
+            _sessionList(docs),
+          ],
         );
       },
+    );
+  }
+
+  Widget _subjectStats(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final totals = <String, int>{};
+    for (final d in docs) {
+      final m = d.data();
+      final subject = ((m['subject'] as String?)?.trim().isNotEmpty ?? false)
+          ? (m['subject'] as String).trim()
+          : '기타';
+      totals[subject] =
+          (totals[subject] ?? 0) + ((m['minutes'] as num?)?.toInt() ?? 0);
+    }
+    if (totals.isEmpty) return _empty('아직 과목별 기록이 없어요.');
+    final entries = totals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final maxMin = entries.first.value.clamp(1, 1 << 30);
+    const colors = [
+      AppColors.primary,
+      Color(0xFFEF6C00),
+      Color(0xFF2E7D32),
+      Color(0xFF8E24AA),
+      Color(0xFF00838F),
+      Color(0xFFC62828),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        children: entries.asMap().entries.map((e) {
+          final subject = e.value.key;
+          final minutes = e.value.value;
+          final color = colors[e.key % colors.length];
+          final h = minutes ~/ 60;
+          final m = minutes % 60;
+          final label = h > 0 ? '$h시간 $m분' : '$m분';
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(subject,
+                          style: AppTextStyles.bodyMedium
+                              .copyWith(fontWeight: FontWeight.w600)),
+                    ),
+                    Text(label,
+                        style: AppTextStyles.bodySmall
+                            .copyWith(color: AppColors.textSecondary)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: minutes / maxMin,
+                    backgroundColor: AppColors.surfaceVariant,
+                    valueColor: AlwaysStoppedAnimation(color),
+                    minHeight: 8,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _sessionList(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    if (docs.isEmpty) {
+      return _empty('아직 학습 기록이 없어요.\n공부를 완료하면 여기에 기록됩니다!');
+    }
+    return Column(
+      children: docs.map((d) {
+        final m = d.data();
+        final minutes = (m['minutes'] as num?)?.toInt() ?? 0;
+        final subject = (m['subject'] as String?)?.trim() ?? '';
+        final date = (m['date'] as String?) ?? '';
+        final focus = (m['focusScore'] as num?)?.toDouble() ?? 0;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: AppColors.cardShadow,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.menu_book_rounded,
+                    color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(subject.isEmpty ? '공부 세션' : subject,
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(fontWeight: FontWeight.w700)),
+                    Text(date,
+                        style: AppTextStyles.labelSmall
+                            .copyWith(color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('$minutes분',
+                      style: AppTextStyles.bodyMedium
+                          .copyWith(fontWeight: FontWeight.w700)),
+                  Text('집중 ${focus.toStringAsFixed(0)}%',
+                      style: AppTextStyles.labelSmall
+                          .copyWith(color: AppColors.textSecondary)),
+                ],
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 

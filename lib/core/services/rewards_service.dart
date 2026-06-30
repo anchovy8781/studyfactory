@@ -194,6 +194,23 @@ class RewardsService {
     }
   }
 
+  /// Whether the user has any study time recorded today (lightweight read).
+  Future<bool> hasStudiedToday() async {
+    final me = _meDoc;
+    if (me == null) return false;
+    try {
+      final today = _dayKey(DateTime.now());
+      final snap = await me
+          .collection('studySessions')
+          .where('date', isEqualTo: today)
+          .limit(1)
+          .get();
+      return snap.docs.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   String _dayKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }

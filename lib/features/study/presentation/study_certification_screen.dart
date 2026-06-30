@@ -82,7 +82,6 @@ class _CertificationNotifier extends StateNotifier<_CertificationState> {
   }
 
   Timer? _timer;
-  int _tick = 0;
 
   static const _waitingItems = [
     _AnalysisItem(label: '얼굴 인식', status: _AnalysisStatus.warning, detail: '대기 중'),
@@ -95,7 +94,6 @@ class _CertificationNotifier extends StateNotifier<_CertificationState> {
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (state.isPaused) return;
-      _tick++;
       state = state.copyWith(
         elapsed: state.elapsed + const Duration(seconds: 1),
       );

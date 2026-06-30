@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
-import 'package:studyverse/shared/widgets/app_button.dart';
 import 'package:studyverse/shared/widgets/app_logo.dart';
 
 // ── Session model ─────────────────────────────────────────────────────────

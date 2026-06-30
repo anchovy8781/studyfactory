@@ -194,7 +194,7 @@ class _PostCard extends StatelessWidget {
     final liked = uid != null && likedBy.contains(uid);
 
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
         builder: (_) => PostDetailScreen(postRef: doc.reference),
       )),
       child: Container(
@@ -386,6 +386,29 @@ class _PostCard extends StatelessWidget {
   }
 }
 
+/// Resolve the current user's display nickname.
+///
+/// Firebase `displayName` is frequently null in the local session (it isn't
+/// refreshed after `updateDisplayName` until a reload/re-login), which made
+/// every post/comment show "익명". Fall back to the Firestore `users` doc
+/// nickname, then the email prefix.
+Future<String> resolveUserName() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return '익명';
+  final dn = user.displayName?.trim();
+  if (dn != null && dn.isNotEmpty) return dn;
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final nick = (doc.data()?['nickname'] as String?)?.trim();
+    if (nick != null && nick.isNotEmpty) return nick;
+  } catch (_) {/* ignore */}
+  final emailName = user.email?.split('@').first;
+  return (emailName != null && emailName.isNotEmpty) ? emailName : '익명';
+}
+
 /// Helper used by the write screen to publish a post.
 Future<void> createPost(String content, String certTag,
     {String? imageUrl}) async {
@@ -395,9 +418,10 @@ Future<void> createPost(String content, String certTag,
   if (banned != null) {
     throw '부적절한 표현이 포함되어 있어 등록할 수 없습니다.';
   }
+  final authorName = await resolveUserName();
   await FirebaseFirestore.instance.collection('posts').add({
     'authorId': user.uid,
-    'authorName': user.displayName ?? '익명',
+    'authorName': authorName,
     'content': content.trim(),
     'certTag': certTag.trim(),
     if (imageUrl != null) 'imageUrl': imageUrl,

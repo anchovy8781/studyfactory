@@ -3,7 +3,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
-import 'package:studyverse/shared/widgets/app_button.dart';
 
 // ---------------------------------------------------------------------------
 // Mock data
