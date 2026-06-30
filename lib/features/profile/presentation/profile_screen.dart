@@ -56,6 +56,13 @@ final _menuItems = [
     route: '/rewards/badges',
   ),
   _MenuItem(
+    icon: Icons.campaign_rounded,
+    iconColor: const Color(0xFF9C27B0),
+    title: '광고 센터',
+    subtitle: '광고 보고 포인트 받기',
+    route: '/ad-center',
+  ),
+  _MenuItem(
     icon: Icons.settings_outlined,
     iconColor: AppColors.textSecondary,
     title: '설정',

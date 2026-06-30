@@ -68,6 +68,12 @@ class AuthRepository {
           'createdAt': FieldValue.serverTimestamp(),
         });
       } catch (_) {/* profile doc can be created on next login */}
+
+      // Send a verification email (non-fatal).
+      try {
+        await fbUser.sendEmailVerification();
+      } catch (_) {/* user can resend from the verification screen */}
+
       await prefs.setBool(_deviceRegisteredKey, true);
       return user;
     } on fb.FirebaseAuthException catch (e) {
@@ -145,6 +151,30 @@ class AuthRepository {
       throw _mapError(e);
     } catch (e) {
       throw _genericError(e);
+    }
+  }
+
+  /// Whether the current user's email is verified.
+  bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
+
+  /// Re-send the verification email to the current user.
+  Future<void> resendEmailVerification() async {
+    try {
+      await _auth.currentUser?.sendEmailVerification();
+    } on fb.FirebaseAuthException catch (e) {
+      throw _mapError(e);
+    } catch (e) {
+      throw _genericError(e);
+    }
+  }
+
+  /// Reloads the user from Firebase and returns the latest verified status.
+  Future<bool> reloadAndCheckEmailVerified() async {
+    try {
+      await _auth.currentUser?.reload();
+      return _auth.currentUser?.emailVerified ?? false;
+    } catch (_) {
+      return false;
     }
   }
 

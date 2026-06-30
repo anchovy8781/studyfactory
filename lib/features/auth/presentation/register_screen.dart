@@ -66,7 +66,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (prev, next) {
       next.whenOrNull(
-        authenticated: (_) => context.go('/home'),
+        authenticated: (_) => context.go('/verify-email'),
         error: (message) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

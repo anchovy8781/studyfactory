@@ -61,6 +61,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> sendPasswordResetEmail(String email) =>
       _repository.sendPasswordResetEmail(email);
 
+  /// Email-verification helpers.
+  bool get isEmailVerified => _repository.isEmailVerified;
+  Future<void> resendEmailVerification() =>
+      _repository.resendEmailVerification();
+  Future<bool> reloadAndCheckEmailVerified() =>
+      _repository.reloadAndCheckEmailVerified();
+
   /// Log out and clear local session.
   Future<void> logout() async {
     state = const AuthState.loading();
