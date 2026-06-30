@@ -44,6 +44,7 @@ import 'package:studyverse/features/study/presentation/study_certification_scree
 import 'package:studyverse/features/study/presentation/grade_graph_screen.dart';
 import 'package:studyverse/features/study/presentation/streak_screen.dart';
 import 'package:studyverse/features/dictionary/presentation/dictionary_screen.dart';
+import 'package:studyverse/features/focus_music/presentation/focus_music_screen.dart';
 import 'package:studyverse/features/study/presentation/study_timer_screen.dart';
 import 'package:studyverse/features/community/presentation/community_screen.dart';
 import 'package:studyverse/features/community/presentation/crew_screen.dart';
@@ -259,6 +260,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/dictionary',
         pageBuilder: (context, state) =>
             _slidePage(state, const DictionaryScreen()),
+      ),
+
+      // ── Focus music ─────────────────────────────────────────────────────
+      GoRoute(
+        path: '/focus-music',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const FocusMusicScreen()),
       ),
 
       // ── Main shell (bottom nav) ─────────────────────────────────────────

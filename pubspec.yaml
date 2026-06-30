@@ -57,6 +57,9 @@ dependencies:
   # Keep screen awake during study/pomodoro
   wakelock_plus: ^1.2.5
 
+  # Royalty-free focus music / noise player
+  audioplayers: ^5.2.1
+
   # Storage (community photo attachments)
   firebase_storage: ^11.7.7
 
@@ -121,6 +124,7 @@ flutter:
     - assets/images/
     - assets/animations/
     - assets/icons/
+    - assets/audio/
 
   fonts:
     - family: Pretendard

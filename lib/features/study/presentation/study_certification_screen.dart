@@ -867,6 +867,8 @@ class _StudyCertificationScreenState
                 avgFocusScore: st.focusScore,
                 subject: widget.subject,
               );
+              // 오늘 공부했으므로 연속학습 경고 알림 취소.
+              await NotificationService.instance.cancelStreakWarning();
               if (!context.mounted) return;
               if (awarded > 0) {
                 await NotificationService.instance.notify(

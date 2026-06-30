@@ -111,6 +111,50 @@ class NotificationService {
     } catch (_) {/* ignore */}
   }
 
+  static const _streakWarnId = 7002;
+
+  /// Schedule a one-time streak warning [warnHour]:00 today (default 23:00 —
+  /// one hour before midnight) if the user hasn't studied yet. No-op if that
+  /// time has already passed today.
+  Future<void> scheduleStreakWarning({int warnHour = 23}) async {
+    if (!await isEnabled()) return;
+    await init();
+    try {
+      await _plugin.cancel(_streakWarnId);
+      final now = tz.TZDateTime.now(tz.local);
+      final when =
+          tz.TZDateTime(tz.local, now.year, now.month, now.day, warnHour);
+      if (!when.isAfter(now)) return; // already past — nothing to schedule
+      await _plugin.zonedSchedule(
+        _streakWarnId,
+        '연속 학습이 끊길 수 있어요! 🔥',
+        '자정 전까지 공부하지 않으면 연속 학습 기록이 초기화돼요. 지금 공부해볼까요?',
+        when,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'studyverse_streak_warn',
+            '연속 학습 경고',
+            channelDescription: '자정 1시간 전 연속 학습 경고',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint('[Notif] streak warn schedule failed: $e');
+    }
+  }
+
+  Future<void> cancelStreakWarning() async {
+    try {
+      await _plugin.cancel(_streakWarnId);
+    } catch (_) {/* ignore */}
+  }
+
   static const _enabledKey = 'notifications_enabled';
 
   Future<bool> isEnabled() async {

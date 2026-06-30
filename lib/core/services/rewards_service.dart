@@ -142,6 +142,8 @@ class RewardsService {
     await me.update({
       'todayStudyHours': FieldValue.increment(hours),
       'totalStudyHours': FieldValue.increment(hours),
+      // Monthly bucket drives the ranking; reset each month by the Cloud Function.
+      'monthlyStudyMinutes': FieldValue.increment(minutes),
       if (awarded > 0) 'points': FieldValue.increment(awarded),
     });
     // Keep a per-session history so the user can review their study log.

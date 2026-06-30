@@ -82,6 +82,10 @@ class StreakScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
+                    Text('과목별 학습 시간', style: AppTextStyles.titleSmall),
+                    const SizedBox(height: 8),
+                    _buildSubjectStats(me),
+                    const SizedBox(height: 24),
                     Text('학습 기록', style: AppTextStyles.titleSmall),
                     const SizedBox(height: 8),
                     _buildSessionList(me),
@@ -140,6 +144,89 @@ class StreakScreen extends StatelessWidget {
                   .copyWith(color: color, fontWeight: FontWeight.w800)),
         ],
       ),
+    );
+  }
+
+  Widget _buildSubjectStats(DocumentReference<Map<String, dynamic>> me) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: me.collection('studySessions').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox(
+              height: 60, child: Center(child: CircularProgressIndicator()));
+        }
+        final totals = <String, int>{};
+        for (final d in snapshot.data!.docs) {
+          final m = d.data();
+          final subject = ((m['subject'] as String?)?.trim().isNotEmpty ?? false)
+              ? (m['subject'] as String).trim()
+              : '기타';
+          totals[subject] =
+              (totals[subject] ?? 0) + ((m['minutes'] as num?)?.toInt() ?? 0);
+        }
+        if (totals.isEmpty) {
+          return _empty('아직 과목별 기록이 없어요.');
+        }
+        final entries = totals.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        final maxMin = entries.first.value.clamp(1, 1 << 30);
+        const colors = [
+          AppColors.primary,
+          Color(0xFFEF6C00),
+          Color(0xFF2E7D32),
+          Color(0xFF8E24AA),
+          Color(0xFF00838F),
+          Color(0xFFC62828),
+        ];
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: AppColors.cardShadow,
+          ),
+          child: Column(
+            children: entries.asMap().entries.map((e) {
+              final subject = e.value.key;
+              final minutes = e.value.value;
+              final color = colors[e.key % colors.length];
+              final h = minutes ~/ 60;
+              final m = minutes % 60;
+              final label = h > 0 ? '$h시간 $m분' : '$m분';
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(subject,
+                              style: AppTextStyles.bodyMedium
+                                  .copyWith(fontWeight: FontWeight.w600)),
+                        ),
+                        Text(label,
+                            style: AppTextStyles.bodySmall
+                                .copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: minutes / maxMin,
+                        backgroundColor: AppColors.surfaceVariant,
+                        valueColor: AlwaysStoppedAnimation(color),
+                        minHeight: 8,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 

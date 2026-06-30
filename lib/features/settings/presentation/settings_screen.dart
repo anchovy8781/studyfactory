@@ -423,6 +423,7 @@ class SettingsScreen extends ConsumerWidget {
   void _showGoalDialog(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     double goal = 5;
+    final textCtrl = TextEditingController(text: '5');
     showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -432,16 +433,46 @@ class SettingsScreen extends ConsumerWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('${goal.toStringAsFixed(0)}시간',
-                  style: AppTextStyles.headlineSmall
-                      .copyWith(color: AppColors.primary)),
+              // Direct numeric input (0.5h steps supported).
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 90,
+                    child: TextField(
+                      controller: textCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.headlineSmall
+                          .copyWith(color: AppColors.primary),
+                      decoration: const InputDecoration(
+                          isDense: true, border: OutlineInputBorder()),
+                      onChanged: (v) {
+                        final parsed = double.tryParse(v);
+                        if (parsed != null) {
+                          setLocal(() => goal = parsed.clamp(0.5, 24.0));
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('시간', style: AppTextStyles.titleMedium),
+                ],
+              ),
+              const SizedBox(height: 8),
               Slider(
-                value: goal,
+                value: goal.clamp(1, 16),
                 min: 1,
                 max: 16,
-                divisions: 15,
-                label: '${goal.toStringAsFixed(0)}시간',
-                onChanged: (v) => setLocal(() => goal = v),
+                divisions: 30,
+                label: '${goal.toStringAsFixed(1)}시간',
+                onChanged: (v) => setLocal(() {
+                  goal = v;
+                  textCtrl.text =
+                      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+                }),
               ),
             ],
           ),
@@ -461,7 +492,7 @@ class SettingsScreen extends ConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('하루 목표를 ${goal.toStringAsFixed(0)}시간으로 설정했습니다.'),
+                      content: Text('하루 목표를 ${goal.toStringAsFixed(1)}시간으로 설정했습니다.'),
                       backgroundColor: AppColors.success,
                       behavior: SnackBarBehavior.floating,
                     ),

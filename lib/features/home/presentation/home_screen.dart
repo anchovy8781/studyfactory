@@ -45,7 +45,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (awarded) {
       await NotificationService.instance
           .notify('연속 학습 보상 🔥', '오늘의 연속 학습 보상 15포인트가 지급되었습니다!');
-      ref.read(homeProvider.notifier).refresh();
+    }
+    // Ensure fresh home data before deciding on the streak warning.
+    await ref.read(homeProvider.notifier).refresh();
+    // 연속학습 경고: 오늘 공부 기록이 없으면 자정 1시간 전(23시)에 1회 경고 알림.
+    final data = ref.read(homeDataProvider);
+    if (data != null && data.todayStudyHours <= 0) {
+      await NotificationService.instance.scheduleStreakWarning();
+    } else {
+      await NotificationService.instance.cancelStreakWarning();
     }
   }
 

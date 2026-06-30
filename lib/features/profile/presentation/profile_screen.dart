@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
@@ -75,6 +76,13 @@ final _menuItems = [
     title: '이벤트',
     subtitle: '진행 중인 이벤트 보기',
     route: '/events',
+  ),
+  _MenuItem(
+    icon: Icons.person_add_alt_1_rounded,
+    iconColor: Color(0xFF1DB954),
+    title: '친구 초대하기',
+    subtitle: '친구에게 StudyVerse 공유',
+    route: 'share:invite',
   ),
   _MenuItem(
     icon: Icons.restaurant_rounded,
@@ -277,6 +285,15 @@ class ProfileScreen extends ConsumerWidget {
             children: [
               InkWell(
                 onTap: () {
+                  if (item.route == 'share:invite') {
+                    Share.share(
+                      'StudyVerse에서 함께 공부해요! 📚\n'
+                      'AI 공부 인증·포모도로·랭킹까지 한 번에.\n'
+                      '지금 StudyVerse를 시작해보세요!',
+                      subject: 'StudyVerse 초대',
+                    );
+                    return;
+                  }
                   try {
                     context.push(item.route);
                   } catch (_) {}

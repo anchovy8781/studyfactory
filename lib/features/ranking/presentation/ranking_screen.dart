@@ -1,33 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-final _top3 = [
-  _RankUser(rank: 1, nickname: '공부맨', points: 2300, avatar: '👑', change: 0),
-  _RankUser(rank: 2, nickname: '김스터디', points: 2450, avatar: '🥈', change: 1),
-  _RankUser(rank: 3, nickname: '얼공이', points: 2150, avatar: '🥉', change: -1),
-];
-
-final _rankList = [
-  _RankUser(rank: 4, nickname: '노력탄', points: 2000, avatar: '🔥', change: 2),
-  _RankUser(rank: 5, nickname: '포기란없다', points: 1950, avatar: '💪', change: -1),
-  _RankUser(rank: 6, nickname: '성실이', points: 1800, avatar: '📚', change: 0),
-  _RankUser(rank: 7, nickname: '집중탄갑', points: 1750, avatar: '⚡', change: 3),
-  _RankUser(rank: 8, nickname: '합격기원', points: 1700, avatar: '🌟', change: -2),
-  _RankUser(rank: 9, nickname: '독서왕', points: 1650, avatar: '📖', change: 1),
-  _RankUser(rank: 10, nickname: '공부벌레', points: 1580, avatar: '🐛', change: 0),
-];
-
-const _myRank = _RankUser(rank: 12, nickname: '김스터디(나)', points: 1350, avatar: '🐶', change: -1);
-
-// ---------------------------------------------------------------------------
-// Screen
-// ---------------------------------------------------------------------------
+/// Monthly study ranking (개인 랭킹), ranked by this month's study minutes.
+///
+/// Resets on the 1st of each month and rewards are paid out automatically by a
+/// scheduled Cloud Function: 1–10위 3000P, 11–50위 1000P.
 class RankingScreen extends ConsumerStatefulWidget {
   const RankingScreen({super.key});
 
@@ -38,12 +20,14 @@ class RankingScreen extends ConsumerStatefulWidget {
 class _RankingScreenState extends ConsumerState<RankingScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _tabs = ['크루 랭킹', '개인 랭킹'];
+  final _tabs = ['개인 랭킹', '크루 랭킹'];
+
+  static const _avatars = ['🦊', '🐶', '🐱', '🐰', '🐻', '🐼', '🐯', '🦁', '🐸', '🐵'];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -64,7 +48,8 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
-          labelStyle: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
+          labelStyle:
+              AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
           unselectedLabelStyle: AppTextStyles.labelLarge,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textSecondary,
@@ -73,51 +58,140 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
           indicatorSize: TabBarIndicatorSize.label,
         ),
       ),
-      body: Stack(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          TabBarView(
-            controller: _tabController,
-            children: [
-              _buildRankingContent(),
-              _buildRankingContent(),
-            ],
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildMyRankBar(),
+          _buildPersonalRanking(),
+          _buildCrewPlaceholder(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRewardBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Text('🏆', style: TextStyle(fontSize: 26)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('이번 달 공부 시간 랭킹',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text('매월 1일 자동 갱신 · 1~10위 3000P · 11~50위 1000P 지급',
+                    style: AppTextStyles.labelSmall
+                        .copyWith(color: Colors.white70)),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRankingContent() {
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(child: _buildPodium()),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text('4위 ~ 10위',
-                style: AppTextStyles.labelLarge.copyWith(
-                    color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+  Widget _buildPersonalRanking() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final query = FirebaseFirestore.instance
+        .collection('users')
+        .orderBy('monthlyStudyMinutes', descending: true)
+        .limit(50);
+    return Column(
+      children: [
+        _buildRewardBanner(),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: query.snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return _info(
+                    '랭킹을 불러올 수 없습니다.\nmonthlyStudyMinutes 색인이 필요할 수 있어요.');
+              }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final docs = snapshot.data!.docs
+                  .where((d) =>
+                      ((d.data()['monthlyStudyMinutes'] as num?)?.toInt() ?? 0) >
+                      0)
+                  .toList();
+              if (docs.isEmpty) {
+                return _info('아직 이번 달 공부 기록이 없어요.\n공부를 시작하면 랭킹에 등록됩니다!');
+              }
+              final users = <_RankUser>[];
+              for (var i = 0; i < docs.length; i++) {
+                final m = docs[i].data();
+                users.add(_RankUser(
+                  rank: i + 1,
+                  uid: docs[i].id,
+                  nickname: (m['displayName'] as String?)?.trim().isNotEmpty ==
+                          true
+                      ? m['displayName'] as String
+                      : (m['email'] as String?)?.split('@').first ?? '익명',
+                  minutes: (m['monthlyStudyMinutes'] as num?)?.toInt() ?? 0,
+                  avatar: _avatars[i % _avatars.length],
+                ));
+              }
+              final top3 = users.take(3).toList();
+              final rest = users.skip(3).toList();
+              final myIndex = users.indexWhere((u) => u.uid == uid);
+
+              return Stack(
+                children: [
+                  ListView(
+                    padding: const EdgeInsets.only(bottom: 90),
+                    children: [
+                      _buildPodium(top3),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Text('4위 ~',
+                            style: AppTextStyles.labelLarge.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      ...rest.asMap().entries.map(
+                          (e) => _buildRankRow(e.value, e.key, uid)),
+                    ],
+                  ),
+                  if (myIndex >= 0)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: _buildMyRankBar(users[myIndex]),
+                    ),
+                ],
+              );
+            },
           ),
         ),
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, i) => _buildRankRow(_rankList[i], i),
-            childCount: _rankList.length,
-          ),
-        ),
-        const SliverToBoxAdapter(child: SizedBox(height: 80)),
       ],
     );
   }
 
-  // ── Podium ───────────────────────────────────────────────────────────────
-  Widget _buildPodium() {
+  Widget _buildCrewPlaceholder() {
+    return _info('크루 랭킹은 준비 중입니다.\n곧 친구들과 함께하는 랭킹이 열려요!');
+  }
+
+  Widget _buildPodium(List<_RankUser> top3) {
+    if (top3.isEmpty) return const SizedBox.shrink();
+    final first = top3[0];
+    final second = top3.length > 1 ? top3[1] : null;
+    final third = top3.length > 2 ? top3[2] : null;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: const BoxDecoration(
@@ -126,21 +200,25 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
       ),
       child: Column(
         children: [
-          Text('이번 주 TOP 3',
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+          Text('이번 달 TOP 3',
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary)),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // 2nd place - left
-              _buildPodiumItem(_top3[1], height: 100, isCenter: false),
+              if (second != null)
+                _buildPodiumItem(second, height: 100, isCenter: false)
+              else
+                const Expanded(child: SizedBox()),
               const SizedBox(width: 8),
-              // 1st place - center
-              _buildPodiumItem(_top3[0], height: 130, isCenter: true),
+              _buildPodiumItem(first, height: 130, isCenter: true),
               const SizedBox(width: 8),
-              // 3rd place - right
-              _buildPodiumItem(_top3[2], height: 80, isCenter: false),
+              if (third != null)
+                _buildPodiumItem(third, height: 80, isCenter: false)
+              else
+                const Expanded(child: SizedBox()),
             ],
           ),
         ],
@@ -148,12 +226,10 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
     ).animate().fadeIn(duration: 500.ms);
   }
 
-  Widget _buildPodiumItem(_RankUser user, {required double height, required bool isCenter}) {
-    final bgColor = isCenter
-        ? AppColors.primary
-        : (user.rank == 2 ? AppColors.surfaceVariant : AppColors.surfaceVariant);
+  Widget _buildPodiumItem(_RankUser user,
+      {required double height, required bool isCenter}) {
+    final bgColor = isCenter ? AppColors.primary : AppColors.surfaceVariant;
     final textColor = isCenter ? Colors.white : AppColors.textPrimary;
-
     return Expanded(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -167,7 +243,7 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
-          Text('${user.points}P',
+          Text(user.timeLabel,
               style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.primary, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
@@ -175,31 +251,33 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
             height: height,
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Center(
-              child: Text(
-                '${user.rank}위',
-                style: TextStyle(
-                  fontSize: isCenter ? 22 : 18,
-                  fontWeight: FontWeight.w800,
-                  color: textColor,
-                ),
-              ),
+              child: Text('${user.rank}위',
+                  style: TextStyle(
+                      fontSize: isCenter ? 22 : 18,
+                      fontWeight: FontWeight.w800,
+                      color: textColor)),
             ),
           ),
         ],
-      ).animate().slideY(begin: 0.3, duration: 500.ms, delay: (user.rank * 80).ms, curve: Curves.easeOut),
+      ).animate().slideY(
+          begin: 0.3,
+          duration: 500.ms,
+          delay: (user.rank * 80).ms,
+          curve: Curves.easeOut),
     );
   }
 
-  // ── Rank list row ────────────────────────────────────────────────────────
-  Widget _buildRankRow(_RankUser user, int index) {
+  Widget _buildRankRow(_RankUser user, int index, String? myUid) {
+    final isMe = user.uid == myUid;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isMe ? AppColors.primaryContainer : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: AppColors.cardShadow,
       ),
@@ -207,73 +285,41 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
         children: [
           SizedBox(
             width: 28,
-            child: Text(
-              '${user.rank}',
-              style: AppTextStyles.titleSmall.copyWith(
-                  fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-              textAlign: TextAlign.center,
-            ),
+            child: Text('${user.rank}',
+                style: AppTextStyles.titleSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary),
+                textAlign: TextAlign.center),
           ),
           const SizedBox(width: 8),
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer,
-              shape: BoxShape.circle,
-            ),
-            child: Center(child: Text(user.avatar, style: const TextStyle(fontSize: 20))),
+            decoration: const BoxDecoration(
+                color: AppColors.primaryContainer, shape: BoxShape.circle),
+            child: Center(
+                child:
+                    Text(user.avatar, style: const TextStyle(fontSize: 20))),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(user.nickname,
-                style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+                style: AppTextStyles.bodyMedium
+                    .copyWith(fontWeight: FontWeight.w600)),
           ),
-          // Rank change indicator
-          _buildChangeIndicator(user.change),
-          const SizedBox(width: 10),
-          Text('${user.points}P',
+          Text(user.timeLabel,
               style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.primary, fontWeight: FontWeight.w700)),
         ],
       ),
-    ).animate().fadeIn(duration: 300.ms, delay: (index * 50).ms).slideX(begin: 0.05);
+    ).animate().fadeIn(duration: 300.ms, delay: (index * 40).ms).slideX(begin: 0.05);
   }
 
-  Widget _buildChangeIndicator(int change) {
-    if (change == 0) {
-      return const Icon(Icons.remove_rounded, color: AppColors.textSecondary, size: 16);
-    } else if (change > 0) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.arrow_upward_rounded, color: AppColors.success, size: 14),
-          Text('$change',
-              style: AppTextStyles.labelSmall.copyWith(
-                  color: AppColors.success, fontWeight: FontWeight.w700)),
-        ],
-      );
-    } else {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.arrow_downward_rounded, color: AppColors.error, size: 14),
-          Text('${change.abs()}',
-              style: AppTextStyles.labelSmall.copyWith(
-                  color: AppColors.error, fontWeight: FontWeight.w700)),
-        ],
-      );
-    }
-  }
-
-  // ── My rank bar ──────────────────────────────────────────────────────────
-  Widget _buildMyRankBar() {
+  Widget _buildMyRankBar(_RankUser me) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.primary,
-        boxShadow: AppColors.primaryShadow,
-      ),
+          color: AppColors.primary, boxShadow: AppColors.primaryShadow),
       child: SafeArea(
         top: false,
         child: Row(
@@ -281,11 +327,10 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                shape: BoxShape.circle,
-              ),
-              child: const Center(child: Text('🐶', style: TextStyle(fontSize: 20))),
+              decoration:
+                  const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
+              child: Center(
+                  child: Text(me.avatar, style: const TextStyle(fontSize: 20))),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -293,15 +338,16 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('내 순위: ${_myRank.rank}위',
+                  Text('내 순위: ${me.rank}위',
                       style: AppTextStyles.titleSmall.copyWith(
                           color: Colors.white, fontWeight: FontWeight.w700)),
-                  Text('${_myRank.nickname}',
-                      style: AppTextStyles.bodySmall.copyWith(color: Colors.white70)),
+                  Text(me.nickname,
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: Colors.white70)),
                 ],
               ),
             ),
-            Text('${_myRank.points}P',
+            Text(me.timeLabel,
                 style: AppTextStyles.titleMedium.copyWith(
                     color: Colors.white, fontWeight: FontWeight.w800)),
           ],
@@ -309,23 +355,36 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
       ),
     ).animate().slideY(begin: 1.0, duration: 400.ms, delay: 300.ms);
   }
+
+  Widget _info(String text) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(text,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium
+                  .copyWith(color: AppColors.textSecondary)),
+        ),
+      );
 }
 
-// ---------------------------------------------------------------------------
-// Data model
-// ---------------------------------------------------------------------------
 class _RankUser {
-  final int rank;
-  final String nickname;
-  final int points;
-  final String avatar;
-  final int change;
-
   const _RankUser({
     required this.rank,
+    required this.uid,
     required this.nickname,
-    required this.points,
+    required this.minutes,
     required this.avatar,
-    required this.change,
   });
+
+  final int rank;
+  final String uid;
+  final String nickname;
+  final int minutes;
+  final String avatar;
+
+  String get timeLabel {
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return h > 0 ? '$h시간 $m분' : '$m분';
+  }
 }

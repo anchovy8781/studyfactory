@@ -55,6 +55,12 @@ service cloud.firestore {
     match /events/{doc} { allow read: if true; }
     match /config/{doc} { allow read: if true; }
 
+    // 월간 랭킹 결과 스냅샷 (읽기 전용, 쓰기는 Cloud Function만)
+    match /rankingHistory/{doc} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     // 탈퇴 기록
     match /withdrawals/{doc} {
       allow create: if signedIn();
