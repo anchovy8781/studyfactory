@@ -58,6 +58,8 @@ class AiToolsScreen extends StatelessWidget {
     _ToolItem(icon: Icons.trending_up_rounded, color: const Color(0xFF3B82F6), label: '등급 시뮬레이션', subtitle: '예상 성적 분석', route: '/ai-tools/grade-sim'),
     _ToolItem(icon: Icons.record_voice_over_rounded, color: const Color(0xFF8B5CF6), label: 'AI 음성 질문', subtitle: '말로 질문하기', route: '/ai-tools/voice'),
     _ToolItem(icon: Icons.document_scanner_rounded, color: const Color(0xFF06B6D4), label: 'OCR 스캔', subtitle: '프린트 촬영 후 분석', route: '/ai-tools/ocr'),
+    _ToolItem(icon: Icons.fact_check_rounded, color: const Color(0xFF7C3AED), label: 'AI 채점 & 해설', subtitle: '사진 찍으면 채점·풀이', route: '/ai-tools/grading'),
+    _ToolItem(icon: Icons.spellcheck_rounded, color: const Color(0xFF0EA5E9), label: 'AI 영어 단어시험', subtitle: '4지선다 단어 퀴즈', route: '/ai-tools/vocab-test'),
     _ToolItem(icon: Icons.school_rounded, color: const Color(0xFFEF4444), label: 'AI 멘토', subtitle: '약점 집중 코칭', route: '/ai-tools/mentor'),
   ];
 

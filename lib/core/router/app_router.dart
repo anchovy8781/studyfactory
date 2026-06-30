@@ -15,6 +15,8 @@ import 'package:studyverse/features/ai_tools/presentation/ai_question_screen.dar
 import 'package:studyverse/features/ai_tools/presentation/grade_simulation_screen.dart';
 import 'package:studyverse/features/ai_tools/presentation/ai_voice_screen.dart';
 import 'package:studyverse/features/ai_tools/presentation/ai_ocr_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/ai_grading_screen.dart';
+import 'package:studyverse/features/ai_tools/presentation/ai_vocab_test_screen.dart';
 import 'package:studyverse/features/ai_tools/presentation/ai_mentor_screen.dart';
 import 'package:studyverse/features/ai_tools/presentation/pomodoro_screen.dart';
 import 'package:studyverse/features/ai_tools/presentation/forgetting_curve_screen.dart';
@@ -467,6 +469,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'ocr',
             pageBuilder: (context, state) =>
                 _slidePage(state, const AiOcrScreen()),
+          ),
+          GoRoute(
+            path: 'grading',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const AiGradingScreen()),
+          ),
+          GoRoute(
+            path: 'vocab-test',
+            pageBuilder: (context, state) =>
+                _slidePage(state, const AiVocabTestScreen()),
           ),
           GoRoute(
             path: 'mentor',

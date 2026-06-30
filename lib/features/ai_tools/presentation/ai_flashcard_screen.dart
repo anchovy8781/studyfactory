@@ -17,6 +17,8 @@ class _AiFlashcardScreenState extends State<AiFlashcardScreen> {
   final _topicCtrl = TextEditingController();
   final _detailCtrl = TextEditingController();
   int _count = 10;
+  final _difficulties = ['쉬움', '보통', '어려움'];
+  String _difficulty = '보통';
   bool _loading = false;
   String? _error;
   List<_Flashcard> _cards = [];
@@ -32,7 +34,7 @@ class _AiFlashcardScreenState extends State<AiFlashcardScreen> {
     try {
       final key = await _storage.read(key: 'claude_api_key') ?? '';
       if (key.isEmpty) { setState(() { _error = 'AI Coach 화면에서 API 키를 먼저 설정하세요.'; _loading = false; }); return; }
-      final raw = await _aiService.generateFlashcards(apiKey: key, topic: _topicCtrl.text, count: _count, detail: _detailCtrl.text);
+      final raw = await _aiService.generateFlashcards(apiKey: key, topic: _topicCtrl.text, count: _count, difficulty: _difficulty, detail: _detailCtrl.text);
       setState(() { _cards = _parseCards(raw); });
     } catch (e) {
       setState(() { _error = e.toString(); });
@@ -70,6 +72,19 @@ class _AiFlashcardScreenState extends State<AiFlashcardScreen> {
                 TextField(controller: _topicCtrl, decoration: const InputDecoration(labelText: '주제', hintText: '예) 전기회로 이론', border: OutlineInputBorder())),
                 const SizedBox(height: AppSizes.spaceMd),
                 TextField(controller: _detailCtrl, maxLines: 2, decoration: const InputDecoration(labelText: '세부 요청사항 (선택)', hintText: '예) 계산문제 위주, 초보자용 쉬운 설명', border: OutlineInputBorder())),
+                const SizedBox(height: AppSizes.spaceMd),
+                Align(alignment: Alignment.centerLeft, child: Text('난이도', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary))),
+                const SizedBox(height: 6),
+                Wrap(spacing: 8, children: _difficulties.map((d) {
+                  final sel = d == _difficulty;
+                  return ChoiceChip(
+                    label: Text(d),
+                    selected: sel,
+                    onSelected: (_) => setState(() => _difficulty = d),
+                    selectedColor: const Color(0xFF10B981),
+                    labelStyle: TextStyle(color: sel ? Colors.white : AppColors.textSecondary),
+                  );
+                }).toList()),
                 const SizedBox(height: AppSizes.spaceMd),
                 Row(children: [
                   Text('카드 수: $_count개', style: AppTextStyles.bodyMedium),

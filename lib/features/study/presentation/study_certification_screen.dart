@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -181,11 +182,27 @@ class _StudyCertificationScreenState
   final FaceDetectionService _faceService = FaceDetectionService();
 
   @override
+  final AudioPlayer _noisePlayer = AudioPlayer();
+  bool _noiseOn = false;
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable(); // AI 공부 중 화면 꺼짐 방지
+    _noisePlayer.setReleaseMode(ReleaseMode.loop);
     _initCamera();
+  }
+
+  Future<void> _toggleNoise() async {
+    try {
+      if (_noiseOn) {
+        await _noisePlayer.pause();
+      } else {
+        await _noisePlayer.play(AssetSource('audio/white_noise.wav'));
+      }
+      setState(() => _noiseOn = !_noiseOn);
+    } catch (_) {/* ignore */}
   }
 
   @override
@@ -262,6 +279,7 @@ class _StudyCertificationScreenState
     WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
     _autoScanTimer?.cancel();
+    _noisePlayer.dispose();
     _controller?.dispose();
     _faceService.dispose();
     super.dispose();
@@ -357,6 +375,14 @@ class _StudyCertificationScreenState
             ],
           ),
           const Spacer(),
+          IconButton(
+            tooltip: '백색소음',
+            icon: Icon(
+              _noiseOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+              color: _noiseOn ? AppColors.primary : AppColors.textSecondary,
+            ),
+            onPressed: _toggleNoise,
+          ),
           IconButton(
             icon: Icon(
               state.isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,

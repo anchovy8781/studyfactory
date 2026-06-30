@@ -207,13 +207,35 @@ class ClaudeAiService {
     required String apiKey,
     required String topic,
     required int count,
+    String difficulty = '보통',
     String detail = '',
   }) {
     return _send(
       apiKey: apiKey,
-      system: '학습용 플래시카드를 생성하는 전문가입니다. 각 카드를 "Q: [질문]\nA: [답변]" 형식으로 작성하세요. 번호를 매겨주세요.',
-      user: '$topic 주제로 핵심 개념 ${count}개의 플래시카드를 만들어주세요.'
+      system: '학습용 플래시카드를 생성하는 전문가입니다. 각 카드를 "Q: [질문]\nA: [답변]" 형식으로 작성하세요. 번호를 매겨주세요. '
+          '난이도에 맞춰 질문의 깊이와 답변의 상세함을 조절하세요. '
+          '(쉬움: 기초 용어·정의 위주, 보통: 개념 이해·적용, 어려움: 심화·응용·함정 포인트 포함)',
+      user: '$topic 주제로 난이도 "$difficulty"의 핵심 개념 ${count}개 플래시카드를 만들어주세요.'
           '${detail.trim().isEmpty ? '' : '\n추가 요청사항: ${detail.trim()}'}',
+      maxTokens: 2048,
+    );
+  }
+
+  // ─── AI English Vocabulary Test ───────────────────────────────────────────
+  /// Returns one quiz item per line in the strict format:
+  ///   word | 정답 한글뜻 | 오답1 ; 오답2 ; 오답3
+  Future<String> generateVocabTest({
+    required String apiKey,
+    required String level,
+    required int count,
+  }) {
+    return _send(
+      apiKey: apiKey,
+      system: '영어 단어 시험 출제기입니다. 반드시 아래 형식만, 한 줄에 하나씩, 다른 말 없이 출력하세요.\n'
+          '형식: 영단어 | 정답(한글 뜻) | 오답1 ; 오답2 ; 오답3\n'
+          '- 오답은 정답과 헷갈릴 만한 그럴듯한 한글 뜻 3개\n'
+          '- 마크다운·번호·설명 금지, 줄마다 형식만',
+      user: '$level 수준의 영어 단어 $count개로 4지선다 단어 시험을 만들어주세요.',
       maxTokens: 2048,
     );
   }
