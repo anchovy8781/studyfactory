@@ -1,18 +1,23 @@
-/// 77 collectible food cards for the gacha system.
+/// 100 collectible food cards for the gacha system.
 class FoodCard {
-  const FoodCard(this.id, this.name, this.emoji, this.rarity);
+  const FoodCard(this.id, this.name, this.emoji, this.rarity, {this.effect = ''});
   final int id;
   final String name;
   final String emoji;
   final String rarity; // common | rare | epic | legendary
+
+  /// Special ability description. Legendary cards each grant a points boost.
+  final String effect;
+
+  bool get isLegendary => rarity == 'legendary';
 }
 
 const foodCards = <FoodCard>[
-  FoodCard(1, '한우 스테이크', '🥩', 'legendary'),
-  FoodCard(2, '랍스터', '🦞', 'legendary'),
-  FoodCard(3, '캐비어', '🥚', 'legendary'),
-  FoodCard(4, '트러플 파스타', '🍝', 'legendary'),
-  FoodCard(5, '황금 케이크', '🎂', 'legendary'),
+  FoodCard(1, '한우 스테이크', '🥩', 'legendary', effect: '학습 포인트 1.1배'),
+  FoodCard(2, '랍스터', '🦞', 'legendary', effect: '학습 포인트 1.1배'),
+  FoodCard(3, '캐비어', '🥚', 'legendary', effect: '학습 포인트 1.1배'),
+  FoodCard(4, '트러플 파스타', '🍝', 'legendary', effect: '학습 포인트 1.1배'),
+  FoodCard(5, '황금 케이크', '🎂', 'legendary', effect: '학습 포인트 1.1배'),
   FoodCard(6, '초밥 모둠', '🍣', 'epic'),
   FoodCard(7, '스테이크', '🍖', 'epic'),
   FoodCard(8, '연어회', '🍣', 'epic'),
@@ -85,7 +90,45 @@ const foodCards = <FoodCard>[
   FoodCard(75, '아보카도', '🥑', 'common'),
   FoodCard(76, '레몬', '🍋', 'common'),
   FoodCard(77, '땅콩', '🥜', 'common'),
+  // ── 신규 추가 카드 (78~100) ───────────────────────────────────────────────
+  FoodCard(78, '금박 초밥', '🍣', 'legendary', effect: '학습 포인트 1.1배'),
+  FoodCard(79, '샥스핀', '🍲', 'legendary', effect: '학습 포인트 1.1배'),
+  FoodCard(80, '푸아그라', '🦆', 'legendary', effect: '학습 포인트 1.1배'),
+  FoodCard(81, '송로버섯 리조또', '🍚', 'epic'),
+  FoodCard(82, '와규 초밥', '🍣', 'epic'),
+  FoodCard(83, '킹크랩', '🦀', 'epic'),
+  FoodCard(84, '양갈비', '🍖', 'epic'),
+  FoodCard(85, '문어숙회', '🐙', 'epic'),
+  FoodCard(86, '딤섬', '🥟', 'rare'),
+  FoodCard(87, '쌀국수', '🍜', 'rare'),
+  FoodCard(88, '팟타이', '🍝', 'rare'),
+  FoodCard(89, '규동', '🍱', 'rare'),
+  FoodCard(90, '오므라이스', '🍳', 'rare'),
+  FoodCard(91, '크레페', '🥞', 'rare'),
+  FoodCard(92, '에그타르트', '🥧', 'rare'),
+  FoodCard(93, '붕어빵', '🐟', 'common'),
+  FoodCard(94, '호떡', '🥮', 'common'),
+  FoodCard(95, '계란빵', '🥚', 'common'),
+  FoodCard(96, '식혜', '🥛', 'common'),
+  FoodCard(97, '약과', '🍪', 'common'),
+  FoodCard(98, '미숫가루', '🥤', 'common'),
+  FoodCard(99, '오뎅', '🍢', 'common'),
+  FoodCard(100, '군밤', '🌰', 'common'),
 ];
 
 FoodCard foodCardById(int id) =>
     foodCards.firstWhere((c) => c.id == id, orElse: () => foodCards.first);
+
+/// IDs of all legendary cards (each grants a 1.1× learning-points boost).
+final legendaryCardIds =
+    foodCards.where((c) => c.isLegendary).map((c) => c.id).toSet();
+
+/// Points multiplier from owned legendary cards.
+///
+/// Each distinct legendary owned adds +0.1× (e.g. 3 legendaries → 1.3×),
+/// capped at 2.0× so it stays balanced.
+double legendaryPointsMultiplier(Iterable<int> ownedCardIds) {
+  final owned = ownedCardIds.where(legendaryCardIds.contains).toSet().length;
+  final mult = 1.0 + 0.1 * owned;
+  return mult > 2.0 ? 2.0 : mult;
+}

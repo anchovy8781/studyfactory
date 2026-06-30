@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:studyverse/features/foodcard/data/food_cards.dart';
 
 /// Centralised points economy, all backed by Firestore.
 ///
@@ -17,6 +18,23 @@ class RewardsService {
   DocumentReference<Map<String, dynamic>>? get _meDoc {
     final uid = _user?.uid;
     return uid == null ? null : _db.collection('users').doc(uid);
+  }
+
+  /// Combined earning multiplier from owned legendary food cards and an active
+  /// x3 booster (포인트 3배권). Applied to study/streak rewards.
+  double earningMultiplier(Map<String, dynamic> userData) {
+    final cards = (userData['foodCards'] as Map?) ?? const {};
+    final owned = cards.entries
+        .where((e) => ((e.value as num?)?.toInt() ?? 0) > 0)
+        .map((e) => int.tryParse(e.key.toString()) ?? -1)
+        .toList();
+    var mult = legendaryPointsMultiplier(owned);
+    final boostUntil = userData['pointBoostUntil'];
+    if (boostUntil is Timestamp &&
+        boostUntil.toDate().isAfter(DateTime.now())) {
+      mult *= 3;
+    }
+    return mult;
   }
 
   /// Append a row to the user's point history ledger (earn/spend).
@@ -112,7 +130,14 @@ class RewardsService {
 
     final hours = minutes / 60.0;
     final blocks = minutes ~/ 10;
-    final awarded = (avgFocusScore >= 85 && blocks > 0) ? blocks * 5 : 0;
+    final base = (avgFocusScore >= 85 && blocks > 0) ? blocks * 5 : 0;
+    // Apply legendary-card / booster multiplier.
+    var mult = 1.0;
+    try {
+      final snap = await me.get();
+      mult = earningMultiplier(snap.data() ?? {});
+    } catch (_) {/* default 1.0 */}
+    final awarded = (base * mult).round();
 
     await me.update({
       'todayStudyHours': FieldValue.increment(hours),
@@ -152,14 +177,15 @@ class RewardsService {
       final newStreak = (last == yesterday) ? currentStreak + 1 : 1;
       final currentBest = (data['bestStreak'] as num?)?.toInt() ?? 0;
       final newBest = newStreak > currentBest ? newStreak : currentBest;
+      final reward = (15 * earningMultiplier(data)).round();
 
       await me.update({
         'streakDays': newStreak,
         'bestStreak': newBest,
         'lastStreakDate': today,
-        'points': FieldValue.increment(15),
+        'points': FieldValue.increment(reward),
       });
-      await logPoints(15, '연속 학습 $newStreak일 보상');
+      await logPoints(reward, '연속 학습 $newStreak일 보상');
       return true;
     } catch (_) {
       return false;

@@ -630,12 +630,35 @@ class _HomeContent extends ConsumerWidget {
           ),
           const SizedBox(height: AppSizes.spaceMd),
           Text(
-            '포모도로 기법을 활용해보세요!\n25분 집중 후 5분 휴식을 반복하면\n집중력이 크게 향상됩니다.',
+            _dailyTip(),
             style: AppTextStyles.bodyMedium,
           ),
         ],
       ),
     ).animate().fadeIn(duration: 600.ms, delay: 480.ms);
+  }
+
+  /// A study tip that changes every day (deterministic by day-of-year).
+  static String _dailyTip() {
+    const tips = [
+      '포모도로 기법을 활용해보세요!\n25분 집중 후 5분 휴식을 반복하면\n집중력이 크게 향상됩니다.',
+      '배운 내용을 다른 사람에게 설명하듯\n말해보면 기억에 훨씬 오래 남아요.',
+      '잠들기 전 10분 복습은\n장기 기억 형성에 큰 도움이 됩니다.',
+      '어려운 과목을 오전에 배치하면\n집중력이 높을 때 효율적으로 공부할 수 있어요.',
+      '한 번에 몰아서보다 매일 조금씩\n나눠서 공부하는 분산 학습이 더 효과적입니다.',
+      '공부 시작 전 오늘의 목표를\n구체적으로 적어두면 집중이 쉬워져요.',
+      '스마트폰은 다른 방에 두고\n공부하면 집중 시간이 길어집니다.',
+      '틀린 문제는 오답노트에 정리해\n약점을 집중적으로 보완해보세요.',
+      '충분한 수면은 최고의 학습 도구입니다.\n하루 7시간 이상 자도록 노력해보세요.',
+      '물을 자주 마시고 가벼운 스트레칭을 하면\n뇌가 더 잘 작동해요.',
+      '복습은 망각곡선을 따라\n1일·3일·7일 간격으로 하면 효과적입니다.',
+      '작은 목표를 달성할 때마다\n스스로에게 보상을 주면 동기가 유지돼요.',
+      '공부 환경을 깔끔하게 정리하면\n불필요한 주의 분산을 줄일 수 있어요.',
+      '이해가 안 되는 부분은 넘기지 말고\nAI 멘토에게 바로 질문해보세요.',
+    ];
+    final now = DateTime.now();
+    final doy = now.difference(DateTime(now.year)).inDays;
+    return tips[doy % tips.length];
   }
 
   String _formatNumber(int n) {

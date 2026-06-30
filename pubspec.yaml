@@ -105,6 +105,14 @@ dev_dependencies:
   riverpod_lint: ^2.3.0
   hive_generator: ^2.0.1
 
+# Pin native plugins to versions compiled with Kotlin 1.9.x / AGP 8.2 so the
+# release APK builds on this Flutter channel. wakelock_plus 1.4.x and the
+# package_info_plus 9.x it pulls are compiled with Kotlin 2.x, whose module
+# metadata is unreadable by the project's Kotlin 1.9.22 → assembleRelease fails.
+dependency_overrides:
+  wakelock_plus: 1.2.8
+  package_info_plus: 8.0.2
+
 flutter:
   uses-material-design: true
   generate: true

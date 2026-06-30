@@ -9,15 +9,22 @@ import 'package:studyverse/core/services/rewards_service.dart';
 
 /// A purchasable store item.
 class _StoreItem {
-  const _StoreItem(this.id, this.emoji, this.title, this.desc, this.cost);
+  const _StoreItem(this.id, this.emoji, this.title, this.desc, this.cost,
+      {this.consumable = false});
   final String id;
   final String emoji;
   final String title;
   final String desc;
   final int cost;
+
+  /// Consumable items can be bought repeatedly (e.g. boosters) and are never
+  /// marked permanently "owned".
+  final bool consumable;
 }
 
 const _items = <_StoreItem>[
+  _StoreItem('point_boost_3x', '⚡', '포인트 3배권 (24시간)',
+      '구매 후 24시간 동안 학습 포인트 3배', 1500, consumable: true),
   _StoreItem('theme_dark', '🌙', '다크 테마', '눈이 편한 어두운 테마', 800),
   _StoreItem('music_pack', '🎵', '집중 음악 팩', '무저작권 집중 음악 모음', 2000),
   _StoreItem('stats_pro', '📊', '통계 PRO', '상세 학습 분석 잠금 해제', 3000),
@@ -153,7 +160,9 @@ class PointStoreScreen extends StatelessWidget {
     int points,
     bool owned,
   ) {
-    final canBuy = !owned && points >= item.cost;
+    // Consumables (boosters) are never permanently owned — always buyable.
+    final isOwned = owned && !item.consumable;
+    final canBuy = !isOwned && points >= item.cost;
     return Container(
       padding: const EdgeInsets.all(AppSizes.spaceLg),
       decoration: BoxDecoration(
@@ -180,7 +189,7 @@ class PointStoreScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSizes.spaceMd),
-          owned
+          isOwned
               ? Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 8),
@@ -243,15 +252,22 @@ class PointStoreScreen extends StatelessWidget {
         if (current < item.cost) {
           throw '포인트가 부족합니다.';
         }
-        tx.update(userDoc, {
-          'points': current - item.cost,
-          'ownedItems': FieldValue.arrayUnion([item.id]),
-        });
+        final update = <String, dynamic>{'points': current - item.cost};
+        if (item.id == 'point_boost_3x') {
+          // Activate a 24h x3 points booster (consumable).
+          update['pointBoostUntil'] = Timestamp.fromDate(
+              DateTime.now().add(const Duration(hours: 24)));
+        } else {
+          update['ownedItems'] = FieldValue.arrayUnion([item.id]);
+        }
+        tx.update(userDoc, update);
       });
       await RewardsService.instance.logPoints(-item.cost, '${item.title} 구매');
       messenger.showSnackBar(
         SnackBar(
-          content: Text('${item.title} 구매 완료!'),
+          content: Text(item.id == 'point_boost_3x'
+              ? '포인트 3배권이 활성화되었습니다! (24시간) ⚡'
+              : '${item.title} 구매 완료!'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
