@@ -102,8 +102,9 @@ exports.monthlyRankingReward = onSchedule(
       rewardedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // 3. Reset monthlyStudyMinutes for ALL users (paginated).
-    await resetMonthlyMinutes();
+    // 3. Reset monthlyStudyMinutes for ALL users + leaderboard (new month).
+    await resetMonthlyMinutes("users");
+    await resetMonthlyMinutes("leaderboard");
 
     logger.info(
       `Monthly ranking reward done: ${winners.length} users rewarded.`
@@ -111,18 +112,16 @@ exports.monthlyRankingReward = onSchedule(
   }
 );
 
-async function resetMonthlyMinutes() {
+async function resetMonthlyMinutes(collection) {
   const pageSize = 400;
-  let last = null;
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    let q = db
-      .collection("users")
+    const page = await db
+      .collection(collection)
       .where("monthlyStudyMinutes", ">", 0)
       .orderBy("monthlyStudyMinutes")
-      .limit(pageSize);
-    if (last) q = q.startAfter(last);
-    const page = await q.get();
+      .limit(pageSize)
+      .get();
     if (page.empty) break;
 
     const batch = db.batch();
@@ -130,11 +129,7 @@ async function resetMonthlyMinutes() {
       batch.update(doc.ref, { monthlyStudyMinutes: 0 });
     }
     await batch.commit();
-
-    last = page.docs[page.docs.length - 1].get("monthlyStudyMinutes");
+    // Committed docs are now 0, so the next query skips them automatically.
     if (page.size < pageSize) break;
-    // After committing, those docs are now 0, so the next query naturally
-    // skips them; reset cursor to re-scan remaining > 0 docs.
-    last = null;
   }
 }

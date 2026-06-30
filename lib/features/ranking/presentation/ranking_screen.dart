@@ -105,8 +105,10 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
 
   Widget _buildPersonalRanking() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    // Reads a privacy-safe public collection (nickname + minutes only) instead
+    // of the protected `users` collection.
     final query = FirebaseFirestore.instance
-        .collection('users')
+        .collection('leaderboard')
         .orderBy('monthlyStudyMinutes', descending: true)
         .limit(50);
     return Column(
@@ -137,10 +139,9 @@ class _RankingScreenState extends ConsumerState<RankingScreen>
                 users.add(_RankUser(
                   rank: i + 1,
                   uid: docs[i].id,
-                  nickname: (m['displayName'] as String?)?.trim().isNotEmpty ==
-                          true
-                      ? m['displayName'] as String
-                      : (m['email'] as String?)?.split('@').first ?? '익명',
+                  nickname: (m['nickname'] as String?)?.trim().isNotEmpty == true
+                      ? m['nickname'] as String
+                      : '익명',
                   minutes: (m['monthlyStudyMinutes'] as num?)?.toInt() ?? 0,
                   avatar: _avatars[i % _avatars.length],
                 ));

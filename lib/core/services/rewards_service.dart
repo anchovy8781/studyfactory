@@ -133,9 +133,14 @@ class RewardsService {
     final base = (avgFocusScore >= 85 && blocks > 0) ? blocks * 5 : 0;
     // Apply legendary-card / booster multiplier.
     var mult = 1.0;
+    String nickname = '익명';
     try {
       final snap = await me.get();
-      mult = earningMultiplier(snap.data() ?? {});
+      final data = snap.data() ?? {};
+      mult = earningMultiplier(data);
+      nickname = (data['nickname'] as String?)?.trim().isNotEmpty == true
+          ? data['nickname'] as String
+          : (_user?.displayName ?? '익명');
     } catch (_) {/* default 1.0 */}
     final awarded = (base * mult).round();
 
@@ -146,6 +151,15 @@ class RewardsService {
       'monthlyStudyMinutes': FieldValue.increment(minutes),
       if (awarded > 0) 'points': FieldValue.increment(awarded),
     });
+    // Mirror to a privacy-safe public leaderboard (nickname + minutes only),
+    // so the ranking screen never needs to read other users' full docs.
+    try {
+      await _db.collection('leaderboard').doc(me.id).set({
+        'nickname': nickname,
+        'monthlyStudyMinutes': FieldValue.increment(minutes),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {/* ignore */}
     // Keep a per-session history so the user can review their study log.
     try {
       await me.collection('studySessions').add({
