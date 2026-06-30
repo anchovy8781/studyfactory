@@ -140,7 +140,7 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                   : AppColors.warning,
             ),
             onPressed: _showApiKeyDialog,
-            tooltip: 'Claude API 키 설정',
+            tooltip: 'Gemini API 키 설정',
           ),
         ],
       ),
@@ -442,8 +442,8 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
         const SizedBox(height: 4),
         Text(
           _apiKey != null && _apiKey!.isNotEmpty
-              ? 'Claude AI가 공부 데이터를 분석해 실시간으로 답변합니다.'
-              : '우상단 키 아이콘을 눌러 Anthropic API 키를 입력하세요.',
+              ? 'Gemini AI가 공부 데이터를 분석해 실시간으로 답변합니다.'
+              : '우상단 키 아이콘을 눌러 Gemini API 키를 입력하세요.',
           style: AppTextStyles.bodySmall.copyWith(
             color: _apiKey != null && _apiKey!.isNotEmpty
                 ? AppColors.textSecondary
@@ -601,13 +601,13 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
           const Icon(Icons.key_rounded, color: AppColors.warning, size: 36),
           const SizedBox(height: 10),
           Text(
-            'Claude API 키가 필요합니다',
+            'Gemini API 키가 필요합니다',
             style: AppTextStyles.titleSmall
                 .copyWith(color: AppColors.warning, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
-            'Anthropic Console에서 API 키를 발급받아\n우상단 키 아이콘을 눌러 입력해주세요.',
+            'Google AI Studio(aistudio.google.com)에서\n무료 API 키를 발급받아 우상단 키 아이콘으로 입력하세요.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning),
           ),
@@ -695,13 +695,13 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Claude API 키 설정'),
+        title: const Text('Gemini API 키 설정'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Anthropic Console (console.anthropic.com)에서\nAPI 키를 발급받아 입력하세요.',
+              'Google AI Studio (aistudio.google.com)에서\n무료 API 키를 발급받아 입력하세요.',
               style: AppTextStyles.bodySmall
                   .copyWith(color: AppColors.textSecondary),
             ),

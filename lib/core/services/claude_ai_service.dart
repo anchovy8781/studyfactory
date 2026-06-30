@@ -1,9 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+/// AI service backed by Google's Gemini API (Generative Language API).
+///
+/// Get a free API key at https://aistudio.google.com/app/apikey and enter it
+/// once on the AI Coach screen — all AI tools then use it automatically.
+/// (Class name kept for compatibility with existing call sites.)
 class ClaudeAiService {
-  static const _url = 'https://api.anthropic.com/v1/messages';
-  static const _model = 'claude-haiku-4-5-20251001';
+  static const _model = 'gemini-1.5-flash-latest';
+  static const _baseUrl =
+      'https://generativelanguage.googleapis.com/v1beta/models';
 
   final Dio _dio = Dio(
     BaseOptions(
@@ -11,12 +17,6 @@ class ClaudeAiService {
       receiveTimeout: const Duration(seconds: 90),
     ),
   );
-
-  Map<String, String> _headers(String apiKey) => {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      };
 
   Future<String> _send({
     required String apiKey,
@@ -26,22 +26,39 @@ class ClaudeAiService {
   }) async {
     try {
       final resp = await _dio.post(
-        _url,
-        options: Options(headers: _headers(apiKey)),
+        '$_baseUrl/$_model:generateContent?key=$apiKey',
+        options: Options(headers: {'content-type': 'application/json'}),
         data: {
-          'model': _model,
-          'max_tokens': maxTokens,
-          'system': system,
-          'messages': [
-            {'role': 'user', 'content': user},
+          'system_instruction': {
+            'parts': [
+              {'text': system},
+            ],
+          },
+          'contents': [
+            {
+              'parts': [
+                {'text': user},
+              ],
+            },
           ],
+          'generationConfig': {
+            'maxOutputTokens': maxTokens,
+            'temperature': 0.7,
+          },
         },
       );
-      final content = resp.data['content'] as List;
-      return (content.first as Map)['text'] as String? ?? '응답을 가져오지 못했습니다.';
+      final candidates = resp.data['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) {
+        return '응답을 가져오지 못했습니다.';
+      }
+      final parts =
+          (candidates.first as Map)['content']?['parts'] as List?;
+      return (parts?.first as Map?)?['text'] as String? ??
+          '응답을 가져오지 못했습니다.';
     } on DioException catch (e) {
-      debugPrint('[Claude] ${e.response?.statusCode}: ${e.message}');
-      if (e.response?.statusCode == 401) {
+      debugPrint('[Gemini] ${e.response?.statusCode}: ${e.message}');
+      final code = e.response?.statusCode;
+      if (code == 400 || code == 401 || code == 403) {
         throw Exception('API 키가 올바르지 않습니다. 설정에서 다시 확인해주세요.');
       }
       throw Exception('AI 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
