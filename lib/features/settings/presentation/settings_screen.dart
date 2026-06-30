@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
+import 'package:studyverse/core/services/notification_service.dart';
 import 'package:studyverse/features/auth/presentation/providers/auth_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -52,9 +53,36 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.alarm_rounded,
                 iconColor: AppColors.accent,
                 title: '공부 리마인더',
-                subtitle: '설정한 시간에 학습 알림',
+                subtitle: '원하는 시간에 매일 학습 알림',
                 value: studyReminder,
-                onChanged: (v) => ref.read(_studyReminderProvider.notifier).state = v,
+                onChanged: (v) async {
+                  ref.read(_studyReminderProvider.notifier).state = v;
+                  if (v) {
+                    final t = await showTimePicker(
+                      context: context,
+                      initialTime: const TimeOfDay(hour: 20, minute: 0),
+                      helpText: '리마인더 시간 선택',
+                    );
+                    if (t != null) {
+                      await NotificationService.instance
+                          .scheduleDailyReminder(t.hour, t.minute);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                '매일 ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}에 알림을 보냅니다.'),
+                            backgroundColor: AppColors.success,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } else {
+                      ref.read(_studyReminderProvider.notifier).state = false;
+                    }
+                  } else {
+                    await NotificationService.instance.cancelDailyReminder();
+                  }
+                },
               ),
             ],
           ),
@@ -132,8 +160,9 @@ class SettingsScreen extends ConsumerWidget {
                 context: context,
                 icon: Icons.help_outline_rounded,
                 iconColor: AppColors.primary,
-                title: '의문하기',
-                subtitle: '자주 묻는 질문 및 문의',
+                title: '문의하기',
+                subtitle: '자주 묻는 질문 및 1:1 문의',
+                onTap: () => context.push('/support'),
               ),
               _buildVersionTile(),
             ],

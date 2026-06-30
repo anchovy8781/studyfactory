@@ -49,6 +49,7 @@ dependencies:
   # Sharing & local notifications
   share_plus: ^7.2.2
   flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
 
   # Camera & ML
   camera: ^0.10.5+9

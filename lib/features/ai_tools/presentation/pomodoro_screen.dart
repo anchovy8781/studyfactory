@@ -4,7 +4,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
+import 'package:flutter/services.dart';
 import 'package:studyverse/core/services/claude_ai_service.dart';
+import 'package:studyverse/core/services/notification_service.dart';
 
 class PomodoroScreen extends StatefulWidget {
   const PomodoroScreen({super.key});
@@ -46,6 +48,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     } else {
       _timer?.cancel();
       setState(() { _isRunning = false; });
+      _playEndSound();
       if (!_isBreak) {
         setState(() { _completedPomodoros++; _isBreak = true; _secondsLeft = _breakMinutes * 60; });
         _fetchBreakAdvice();
@@ -53,6 +56,16 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
         setState(() { _isBreak = false; _secondsLeft = _workMinutes * 60; _breakAdvice = null; });
       }
     }
+  }
+
+  void _playEndSound() {
+    // 소리 + 진동 + 알림(소리 포함)
+    SystemSound.play(SystemSoundType.alert);
+    HapticFeedback.heavyImpact();
+    NotificationService.instance.notify(
+      _isBreak ? '휴식 끝! ⏰' : '집중 시간 완료! 🎉',
+      _isBreak ? '다시 집중할 시간이에요.' : '잠깐 휴식하세요.',
+    );
   }
 
   void _reset() {

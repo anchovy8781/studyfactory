@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timezone/data/latest_all.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 
 /// A stored in-app notification.
 class AppNotification {
@@ -49,6 +51,10 @@ class NotificationService {
   Future<void> init() async {
     if (_inited) return;
     try {
+      tzdata.initializeTimeZones();
+      try {
+        tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
+      } catch (_) {/* default UTC */}
       const android = AndroidInitializationSettings('@mipmap/ic_launcher');
       const ios = DarwinInitializationSettings();
       await _plugin.initialize(
@@ -62,6 +68,47 @@ class NotificationService {
     } catch (e) {
       debugPrint('[Notif] init failed: $e');
     }
+  }
+
+  static const _reminderId = 7001;
+
+  /// Schedule (or reschedule) a daily study reminder at [hour]:[minute].
+  Future<void> scheduleDailyReminder(int hour, int minute) async {
+    await init();
+    try {
+      await _plugin.cancel(_reminderId);
+      final now = tz.TZDateTime.now(tz.local);
+      var when = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+      if (when.isBefore(now)) when = when.add(const Duration(days: 1));
+      await _plugin.zonedSchedule(
+        _reminderId,
+        '공부할 시간이에요! 📚',
+        '오늘의 학습 목표를 향해 출발해볼까요?',
+        when,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'studyverse_reminder',
+            '공부 리마인더',
+            channelDescription: '설정한 시간의 학습 알림',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time, // daily
+      );
+    } catch (e) {
+      debugPrint('[Notif] schedule failed: $e');
+    }
+  }
+
+  Future<void> cancelDailyReminder() async {
+    try {
+      await _plugin.cancel(_reminderId);
+    } catch (_) {/* ignore */}
   }
 
   /// Show a system notification AND save it to the in-app inbox.
