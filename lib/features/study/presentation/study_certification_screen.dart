@@ -84,6 +84,12 @@ class _CertificationNotifier extends StateNotifier<_CertificationState> {
 
   Timer? _timer;
 
+  // Wall-clock based elapsed so study time keeps counting accurately even when
+  // the phone screen is off or the app is backgrounded (a Dart Timer is
+  // throttled/paused in the background, but wall-clock math stays correct).
+  DateTime _segmentStart = DateTime.now();
+  Duration _accumulated = Duration.zero;
+
   static const _waitingItems = [
     _AnalysisItem(label: '얼굴 인식', status: _AnalysisStatus.warning, detail: '대기 중'),
     _AnalysisItem(label: '시선 추적', status: _AnalysisStatus.warning, detail: '대기 중'),
@@ -92,16 +98,34 @@ class _CertificationNotifier extends StateNotifier<_CertificationState> {
     _AnalysisItem(label: '졸음 감지', status: _AnalysisStatus.ok, detail: '없음'),
   ];
 
+  Duration get _currentElapsed => state.isPaused
+      ? _accumulated
+      : _accumulated + DateTime.now().difference(_segmentStart);
+
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (state.isPaused) return;
-      state = state.copyWith(
-        elapsed: state.elapsed + const Duration(seconds: 1),
-      );
+      state = state.copyWith(elapsed: _currentElapsed);
     });
   }
 
-  void togglePause() => state = state.copyWith(isPaused: !state.isPaused);
+  /// Recompute elapsed from the wall clock (call when the app resumes so the
+  /// display catches up immediately after being backgrounded/screen-off).
+  void syncElapsed() {
+    if (!state.isPaused) state = state.copyWith(elapsed: _currentElapsed);
+  }
+
+  void togglePause() {
+    if (state.isPaused) {
+      // resuming
+      _segmentStart = DateTime.now();
+      state = state.copyWith(isPaused: false);
+    } else {
+      // pausing — bank the running segment
+      _accumulated += DateTime.now().difference(_segmentStart);
+      state = state.copyWith(isPaused: true, elapsed: _accumulated);
+    }
+  }
 
   void updateFromFaceResult(FaceDetectionResult result) {
     final newItems = _itemsFromResult(result);
@@ -207,14 +231,22 @@ class _StudyCertificationScreenState
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Study time is wall-clock based, so it keeps counting while backgrounded /
+    // screen-off; on resume we just catch the display up and re-open the camera.
+    if (state == AppLifecycleState.resumed) {
+      ref.read(_certificationProvider.notifier).syncElapsed();
+      _initCamera();
+      return;
+    }
     final ctrl = _controller;
     if (ctrl == null || !ctrl.value.isInitialized) return;
-    if (state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      // Android blocks camera capture with the screen off — release it (also
+      // ensures no video is retained), but the study timer keeps running.
       _autoScanTimer?.cancel();
       ctrl.dispose();
       if (mounted) setState(() { _controller = null; _cameraReady = false; });
-    } else if (state == AppLifecycleState.resumed) {
-      _initCamera();
     }
   }
 
