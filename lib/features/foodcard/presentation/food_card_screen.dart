@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:studyverse/core/constants/app_colors.dart';
 import 'package:studyverse/core/constants/app_sizes.dart';
 import 'package:studyverse/core/constants/app_text_styles.dart';
@@ -47,6 +48,13 @@ class _FoodCardScreenState extends State<FoodCardScreen>
         elevation: 0,
         centerTitle: true,
         title: Text('푸드카드', style: AppTextStyles.titleLarge),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.swap_horiz_rounded),
+            tooltip: '카드 교환',
+            onPressed: () => context.push('/foodcard/trade'),
+          ),
+        ],
         bottom: TabBar(
           controller: _tab,
           labelColor: AppColors.primary,

@@ -36,6 +36,8 @@ import 'package:studyverse/features/notifications/presentation/notification_scre
 import 'package:studyverse/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:studyverse/features/support/presentation/support_screen.dart';
 import 'package:studyverse/features/foodcard/presentation/food_card_screen.dart';
+import 'package:studyverse/features/foodcard/presentation/food_card_trade_screen.dart';
+import 'package:studyverse/features/battle/presentation/battle_screen.dart';
 import 'package:studyverse/features/meal/presentation/school_meal_screen.dart';
 import 'package:studyverse/features/events/presentation/events_screen.dart';
 import 'package:studyverse/features/home/presentation/home_screen.dart';
@@ -229,6 +231,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/foodcard',
         pageBuilder: (context, state) =>
             _slidePage(state, const FoodCardScreen()),
+      ),
+      GoRoute(
+        path: '/foodcard/trade',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const FoodCardTradeScreen()),
+      ),
+
+      // ── Real-time study battle ──────────────────────────────────────────
+      GoRoute(
+        path: '/battle',
+        pageBuilder: (context, state) =>
+            _slidePage(state, const BattleScreen()),
       ),
 
       // ── School meal / Events ────────────────────────────────────────────
